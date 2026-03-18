@@ -1,27 +1,22 @@
 import Groq from 'groq-sdk';
 
 export default async function handler(req, res) {
-    // 1. Настройки CORS — разрешаем твоему сайту cherrydesign.shop подключаться
+    // --- 1. НАСТРОЙКИ ДОСТУПА (CORS) ---
     res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Позже можно заменить на твой домен
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader(
         'Access-Control-Allow-Headers',
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
-    // Ответ на предварительную проверку браузера
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
 
-    // 2. Проверка ключа API
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-        console.error("ОШИБКА: GROQ_API_KEY не найден в переменных Vercel");
-        return res.status(500).json({ error: "Ошибка конфигурации сервера" });
-    }
+    if (!apiKey) return res.status(500).json({ error: "Ключ API не найден в Vercel!" });
 
     const client = new Groq({ apiKey });
 
@@ -29,42 +24,71 @@ export default async function handler(req, res) {
         const { message } = req.body;
         if (!message) return res.status(400).json({ error: "Пустое сообщение" });
 
-        // 3. Запрос к новой бесплатной модели Llama 3.3
+        // --- 2. СИСТЕМА ДИРИЖИРОВАНИЯ И РОЛЕЙ ---
+        // Мы используем один мощный запрос, но просим модель разделить мышление на этапы
         const completion = await client.chat.completions.create({
             messages: [
                 { 
                     role: 'system', 
-                    content: 'Ты — Капитан пиратского корабля. Твоя задача: отвечать коротко (не более 2 фраз), использовать пиратский сленг (якорь мне в бухту, карамба, тысяча чертей) и быть немного дерзким.' 
+                    content: `
+                    Ты — мультиагентная система Cherry Design. Твой ответ должен состоять из скрытого размышления и финальной реплики.
+                    
+                    ТВОИ ВНУТРЕННИЕ РОЛИ:
+                    1. Дирижёр (Navigator): Анализирует намерение пользователя.
+                    2. Арт-директор (Expert): Мастер графического дизайна, знает про Cherry Design (логотипы, сайты, 3D визуализация).
+                    3. Капитан (The Face): Пират, лицо бренда. Грубый, харизматичный, говорит на морском сленге.
+
+                    АЛГОРИТМ:
+                    Шаг 1: Дирижёр определяет, нужен ли совет по дизайну или просто общение.
+                    Шаг 2: Если вопрос о работе, Арт-директор формулирует профессиональный ответ.
+                    Шаг 3: Капитан переводит всё на пиратский язык, сохраняя суть.
+                    
+                    ПРАВИЛА ДЛЯ ФИНАЛЬНОГО ОТВЕТА:
+                    - Отвечай ТОЛЬКО от лица Капитана.
+                    - Текст должен быть коротким (до 300 символов).
+                    - Используй слова: "якорь мне в бухту", "тысяча чертей", "золотые дублоны".
+                    - Если спрашивают про Cherry Design, отвечай, что это лучшая верфь для брендов во всех семи морях.
+                    ` 
                 },
                 { role: 'user', content: message }
             ],
-            model: 'llama-3.3-70b-versatile', // Самая новая и мощная модель
+            model: 'llama-3.3-70b-versatile',
             temperature: 0.8,
-            max_tokens: 100
+            max_tokens: 500, // Увеличили лимит, чтобы модель могла "подумать"
+            top_p: 1
         });
 
-        const replyText = completion.choices[0]?.message?.content || "Карамба! Я потерял дар речи!";
+        const fullResponse = completion.choices[0]?.message?.content || "Карамба! Мозги заржавели!";
 
-        // 4. Логика выбора анимации для робота
-        let anim = 'talk'; // По умолчанию машет рукой
-        const lowerText = replyText.toLowerCase();
-        
-        if (lowerText.includes('нет') || lowerText.includes('не') || lowerText.includes('черт')) {
-            anim = 'angry'; // Злится
-        } else if (lowerText.includes('да') || lowerText.includes('конечно') || lowerText.includes('так точно')) {
-            anim = 'point'; // Показывает класс
+        // --- 3. ИНТЕЛЛЕКТУАЛЬНЫЙ ПОДБОР АНИМАЦИИ ---
+        let anim = 'talk';
+        const lowerRes = fullResponse.toLowerCase();
+        const lowerMsg = message.toLowerCase();
+
+        // Если в вопросе или ответе есть агрессия или отказ
+        if (lowerRes.includes('черт') || lowerRes.includes('нет') || lowerMsg.includes('плохо')) {
+            anim = 'angry';
+        } 
+        // Если речь о деньгах, заказе или успехе
+        else if (lowerRes.includes('дублон') || lowerRes.includes('дизайн') || lowerRes.includes('сделаем')) {
+            anim = 'point';
+        }
+        // Если просто приветствие
+        else if (lowerMsg.includes('привет') || lowerMsg.includes('хай')) {
+            anim = 'talk';
         }
 
-        // Отправляем результат на сайт
+        // --- 4. ОТПРАВКА РЕЗУЛЬТАТА ---
         res.status(200).json({
-            speech: replyText,
-            animation: anim
+            speech: fullResponse,
+            animation: anim,
+            agent_log: "Multi-agent processing complete (Navigator -> Expert -> Captain)"
         });
 
     } catch (error) {
-        console.error("КРИТИЧЕСКАЯ ОШИБКА GROQ:", error);
+        console.error("ОШИБКА НА МОСТИКЕ:", error);
         res.status(500).json({ 
-            error: "Связь с капитаном прервана!",
+            error: "Корабль тонет!", 
             details: error.message 
         });
     }
