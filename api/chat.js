@@ -1,29 +1,73 @@
-const { Groq } = require('groq-sdk');
+const Groq = require('groq-sdk');
 
-module.exports = async (req, res) => {
-  // Разрешаем запросы с твоего основного сайта
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+// Инициализируем клиента
+const client = new Groq({
+    apiKey: process.env.GROQ_API_KEY
+});
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+// Экспортируем функцию по классическому стандарту Vercel
+module.exports = async function handler(req, res) {
+    // 1. НАСТРОЙКИ CORS (пропускаем запросы с твоего сайта)
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    );
 
-  const { message } = req.body;
-  // Мы возьмем ключ из настроек Vercel (это безопасно)
-  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    // Если это предварительный запрос от браузера (OPTIONS) - говорим "всё ок"
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
 
-  try {
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: "Ты — Капитан Усач, кот-пират студии Cherry Design. Отвечай СТРОГО JSON: {\"speech\":\"текст\", \"animation\":\"idle/talk/angry/point\"}" },
-        { role: "user", content: message }
-      ],
-      model: "llama3-8b-8192",
-      response_format: { type: "json_object" }
-    });
+    if (req.method !== 'POST') {
+        return res.status(405).json({ message: 'Разрешен только метод POST' });
+    }
 
-    res.status(200).json(JSON.parse(completion.choices[0].message.content));
-  } catch (e) {
-    res.status(500).json({ speech: "Тысяча чертей! Мозги заклинило.", animation: "angry" });
-  }
+    try {
+        const { message } = req.body;
+
+        if (!message) {
+            return res.status(400).json({ error: 'Нет сообщения от пользователя' });
+        }
+
+        // 2. ЗАПРОС К НЕЙРОСЕТИ GROQ
+        const completion = await client.chat.completions.create({
+            messages: [
+                {
+                    role: 'system',
+                    content: 'Ты Капитан пиратского корабля. Отвечай коротко, дерзко, используй пиратский сленг.'
+                },
+                {
+                    role: 'user',
+                    content: message
+                }
+            ],
+            model: 'mixtral-8x7b-32768', // Модель Groq
+            temperature: 0.7,
+            max_tokens: 150
+        });
+
+        const replyText = completion.choices[0]?.message?.content || "Карамба, я потерял дар речи!";
+
+        // 3. ВЫБИРАЕМ АНИМАЦИЮ В ЗАВИСИМОСТИ ОТ ТЕКСТА
+        let anim = 'idle';
+        let lowerReply = replyText.toLowerCase();
+        
+        if (replyText.includes('!')) anim = 'talk'; // Машет рукой
+        if (lowerReply.includes('якорь') || lowerReply.includes('черт') || lowerReply.includes('карамба')) anim = 'angry'; // Бьет кулаком
+        if (lowerReply.includes('капитан') || lowerReply.includes('да')) anim = 'point'; // Показывает палец вверх
+
+        // 4. ОТПРАВЛЯЕМ ОТВЕТ НА САЙТ
+        res.status(200).json({
+            speech: replyText,
+            animation: anim
+        });
+
+    } catch (error) {
+        console.error("Ошибка API Groq:", error);
+        res.status(500).json({ error: "Ошибка связи с капитанским мостиком!" });
+    }
 };
