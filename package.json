@@ -1,4 +1,8 @@
 {
+  "name": "captain-bot",
+  "version": "1.0.0",
+  "description": "API for AI Robot",
+  "main": "api/chat.js",
   "dependencies": {
     "groq-sdk": "^0.3.3"
   }
