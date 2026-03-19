@@ -1,4 +1,4 @@
-// chat.js
+// chat.js 
 // Client-side chat logic for /api/chat
 // Usage: include as module script after DOM is ready
 // Expects DOM elements with IDs: input-field, send-btn, mic-btn, rate, volume, clear, chat-log, bubble, bubble-text
