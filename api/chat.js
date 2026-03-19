@@ -1,207 +1,153 @@
-// chat.js 
-// Client-side chat logic for /api/chat
-// Usage: include as module script after DOM is ready
-// Expects DOM elements with IDs: input-field, send-btn, mic-btn, rate, volume, clear, chat-log, bubble, bubble-text
+// api/chat.js
+import Groq from 'groq-sdk';
+import fetch from 'node-fetch';
 
-const API_BASE = (window.location && window.location.origin) ? window.location.origin + '/api/chat' : '/api/chat';
-const MAX_RETRIES = 2;
-const FETCH_TIMEOUT_MS = 9000;
-const SPEECH_MAX_CHARS = 1400;
+const MAX_MESSAGE_LENGTH = 3000;
+const MAX_SPEECH_LENGTH = 180;
+const ALLOWED_BASE_ANIMS = new Set(['idle','thinking','explaining','angry']);
 
-const els = {
-  input: document.getElementById('input-field'),
-  sendBtn: document.getElementById('send-btn'),
-  micBtn: document.getElementById('mic-btn'),
-  rate: document.getElementById('rate'),
-  volume: document.getElementById('volume'),
-  clear: document.getElementById('clear'),
-  chatLog: document.getElementById('chat-log'),
-  bubble: document.getElementById('bubble'),
-  bubbleText: document.getElementById('bubble-text')
-};
-
-function safeTextNode(text) {
-  const d = document.createElement('div');
-  d.textContent = text;
-  return d;
+function safeString(v){ if(typeof v !== 'string') return ''; return v.replace(/[\u0000-\u001F\u007F-\u009F]/g,'').trim(); }
+function validateChoreoOverrides(obj){
+  if(!obj || typeof obj !== 'object') return {};
+  const out = {};
+  for(const k of Object.keys(obj)){
+    const v = obj[k];
+    if(!v || typeof v !== 'object') continue;
+    out[k] = { s: Number(v.s) || 0, a: Number(v.a) || 0, ax: typeof v.ax === 'string' ? v.ax : undefined };
+  }
+  return out;
 }
 
-function appendChat(text, cls = 'chat-bot') {
-  if (!els.chatLog) return;
-  const node = document.createElement('div');
-  node.className = 'chat-item ' + cls;
-  node.textContent = text;
-  els.chatLog.appendChild(node);
-  els.chatLog.scrollTop = els.chatLog.scrollHeight;
-}
-
-function setBubble(text) {
-  if (!els.bubble || !els.bubbleText) return;
-  els.bubbleText.textContent = text;
-  els.bubble.style.display = text ? 'block' : 'none';
-}
-
-// fetch with timeout
-async function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+// Upstash publish (optional). Если не настроен, просто noop.
+async function upstashPublish(channel, message){
+  const url = process.env.UPSTASH_REST_URL;
+  const token = process.env.UPSTASH_REST_TOKEN;
+  if(!url || !token) return;
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(id);
-    return res;
-  } catch (err) {
-    clearTimeout(id);
-    throw err;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ channel, message })
+    });
+  } catch(e){
+    console.warn('Upstash publish failed', e?.message || e);
   }
 }
 
-// send message with retry/backoff
-async function postChat(payload) {
-  let attempt = 0;
-  while (attempt <= MAX_RETRIES) {
-    try {
-      const res = await fetchWithTimeout(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }, FETCH_TIMEOUT_MS);
-      if (!res.ok) {
-        const body = await res.text().catch(() => '<no body>');
-        throw new Error(`Server ${res.status}: ${body}`);
-      }
-      const data = await res.json();
-      return data;
-    } catch (err) {
-      console.warn('postChat attempt', attempt, err?.message || err);
-      attempt++;
-      if (attempt > MAX_RETRIES) throw err;
-      await new Promise(r => setTimeout(r, 500 * attempt));
-    }
+export default async function handler(req, res){
+  // CORS
+  res.setHeader('Access-Control-Allow-Credentials','true');
+  res.setHeader('Access-Control-Allow-Origin','*');
+  res.setHeader('Access-Control-Allow-Methods','GET,OPTIONS,POST');
+  res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization');
+
+  if(req.method === 'OPTIONS') return res.status(200).end();
+
+  const apiKey = process.env.GROQ_API_KEY;
+  if(!apiKey) {
+    console.error('GROQ_API_KEY missing');
+    return res.status(500).json({ error: 'GROQ_API_KEY missing' });
   }
-}
 
-// play speech and sync bubble
-function playSpeech(text) {
-  if (!('speechSynthesis' in window)) return Promise.resolve();
-  return new Promise((resolve) => {
-    try {
-      const utter = new SpeechSynthesisUtterance(String(text).slice(0, SPEECH_MAX_CHARS));
-      utter.lang = 'ru-RU';
-      utter.rate = parseFloat(els.rate?.value || 1);
-      utter.volume = parseFloat(els.volume?.value || 1);
-      utter.onstart = () => {
-        setBubble(text);
-      };
-      utter.onend = () => {
-        setBubble('');
-        resolve();
-      };
-      utter.onerror = () => {
-        setBubble('');
-        resolve();
-      };
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utter);
-    } catch (e) {
-      console.warn('playSpeech error', e);
-      setBubble('');
-      resolve();
-    }
-  });
-}
+  const client = new Groq({ apiKey });
 
-// handle commands array from server
-async function handleCommands(commands = []) {
-  for (const cmd of commands) {
-    if (!cmd || typeof cmd !== 'object') continue;
-    const type = String(cmd.type || '').toLowerCase();
-    if (type === 'move' && typeof cmd.x === 'number' && typeof cmd.z === 'number') {
-      // call global move handler if exists
-      if (typeof window.setCharacterTarget === 'function') {
-        try { window.setCharacterTarget(cmd.x, cmd.z); } catch (e) { console.warn('move handler failed', e); }
-      }
-    } else if (type === 'animation' && cmd.name) {
-      // call global playAnimation if available
-      if (typeof window.playAnimation === 'function') {
-        try { window.playAnimation(cmd.name, { loop: !!cmd.loop, fade: cmd.fade || 0.3 }); } catch (e) { console.warn('playAnimation failed', e); }
-      }
-    } else if (type === 'speech' && cmd.text) {
-      try { await playSpeech(cmd.text); } catch (e) { console.warn('speech command failed', e); }
-    } else {
-      console.warn('Unknown command', cmd);
-    }
-  }
-}
-
-// main send flow
-async function sendMessage() {
-  if (!els.input) return;
-  const text = els.input.value.trim();
-  if (!text) return;
-  appendChat(text, 'chat-user');
-  els.input.value = '';
-  setBubble('...');
   try {
-    const payload = { message: text, context: { mouseX: (window.mouseObserver && window.mouseObserver.x) || 0 }, userId: (window.USER_ID || 'guest') };
-    const data = await postChat(payload);
-    // expected fields: speech, baseAnim, choreoOverrides, commands
-    const speech = data?.speech || '';
-    const baseAnim = data?.baseAnim || '';
-    const commands = Array.isArray(data?.commands) ? data.commands : [];
+    const body = req.body || {};
+    let { message, context, userId, priority } = body;
+    message = safeString(message || '');
+    if(!message) return res.status(400).json({ error: 'Empty message' });
+    if(message.length > MAX_MESSAGE_LENGTH) return res.status(400).json({ error: 'Message too long' });
 
-    if (speech) appendChat(speech, 'chat-bot');
-    setBubble(speech || '');
+    context = (context && typeof context === 'object') ? context : {};
+    userId = safeString(userId || 'global');
+    priority = Number(priority || 0);
+    const mouseX = typeof context.mouseX === 'number' ? context.mouseX : (context?.mouseX ? Number(context.mouseX) : 0);
 
-    // trigger base animation if provided
-    if (baseAnim && typeof window.playAnimation === 'function') {
-      try { window.playAnimation(baseAnim, { loop: baseAnim === 'idle', fade: 0.3 }); } catch (e) { console.warn('baseAnim failed', e); }
+    const systemPrompt = `
+Ты — ИИ-Дирижер студии Cherry Design.
+Внутри себя последовательно: Навигатор, Арт-директор, затем Капитан и Хореограф.
+Контекст: cursorX=${mouseX}.
+Отвечай строго JSON:
+{
+  "speech":"... (<= ${MAX_SPEECH_LENGTH} chars)",
+  "baseAnim":"idle|thinking|explaining|angry",
+  "choreoOverrides":{...},
+  "commands":[
+    { "type":"move", "x":1.2, "z":-0.5, "priority": 40 },
+    { "type":"animation", "name":"wave", "priority":30 }
+  ]
+}
+`;
+
+    console.log('chat request', { userId, message: message.slice(0,200), mouseX, priority });
+
+    const completion = await client.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.8
+    });
+
+    const raw = completion.choices?.[0]?.message?.content || '';
+    console.log('LLM raw preview:', String(raw).slice(0,1000));
+
+    let parsed = null;
+    try {
+      parsed = (typeof raw === 'object') ? raw : JSON.parse(String(raw).trim());
+    } catch(e){
+      const s = String(raw);
+      const a = s.indexOf('{'), b = s.lastIndexOf('}');
+      if(a >= 0 && b > a) {
+        try { parsed = JSON.parse(s.slice(a, b+1)); } catch(e2){ parsed = null; }
+      }
     }
 
-    // play speech and then run commands that may follow
-    await playSpeech(speech || '');
-    await handleCommands(commands);
-  } catch (err) {
-    console.error('sendMessage error', err);
-    appendChat('Ошибка сети. Попробуйте ещё раз.', 'chat-bot');
-    setBubble('');
-  }
-}
+    if(!parsed || typeof parsed !== 'object'){
+      console.warn('Model returned invalid JSON', String(raw).slice(0,1000));
+      return res.status(502).json({ error: 'Model returned invalid JSON', raw: String(raw).slice(0,1000) });
+    }
 
-// attach events
-function attachUI() {
-  if (els.sendBtn) els.sendBtn.addEventListener('click', sendMessage);
-  if (els.input) els.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
-  if (els.clear) els.clear.addEventListener('click', () => { if (els.chatLog) els.chatLog.innerHTML = ''; appendChat('Чат очищен', 'chat-bot'); });
-  if (els.micBtn) {
-    els.micBtn.addEventListener('click', async () => {
-      // simple toggle: if speechSynthesis speaking, cancel; else focus input
-      if (window.speechSynthesis && window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-        setBubble('');
-      } else {
-        els.input?.focus();
+    const speech = safeString(parsed.speech || '').slice(0, MAX_SPEECH_LENGTH);
+    const baseAnim = ALLOWED_BASE_ANIMS.has(safeString(parsed.baseAnim || 'idle')) ? parsed.baseAnim : 'idle';
+    const choreoOverrides = validateChoreoOverrides(parsed.choreoOverrides || {});
+    const commands = Array.isArray(parsed.commands) ? parsed.commands : [];
+
+    const normalized = [];
+    for(const cmd of commands){
+      if(!cmd || typeof cmd !== 'object' || !cmd.type) continue;
+      const type = safeString(cmd.type);
+      const cmdPriority = Number(cmd.priority || priority || 0);
+      if(type === 'move' && typeof cmd.x === 'number' && typeof cmd.z === 'number'){
+        normalized.push({ type:'move', x: Number(cmd.x), z: Number(cmd.z), priority: cmdPriority });
+      } else if(type === 'animation' && typeof cmd.name === 'string'){
+        normalized.push({ type:'animation', name: safeString(cmd.name), priority: cmdPriority });
+      } else if(type === 'speech' && typeof cmd.text === 'string'){
+        normalized.push({ type:'speech', text: safeString(cmd.text).slice(0, MAX_SPEECH_LENGTH), priority: cmdPriority });
       }
+    }
+
+    // publish commands (optional)
+    for(const c of normalized){
+      const payload = { type: 'orchestrator.command', command: c, meta: { from: 'chat', timestamp: Date.now() } };
+      const channel = `user:${userId}`;
+      await upstashPublish(channel, payload);
+    }
+
+    const decision = { speech, baseAnim, choreoOverrides, commands: normalized, meta: { timestamp: Date.now() } };
+    await upstashPublish(`user:${userId}:decision`, decision);
+
+    return res.status(200).json(decision);
+
+  } catch (err) {
+    console.error('chat handler error', err);
+    return res.status(500).json({
+      speech: 'Корабль идет ко дну! Связь оборвана!',
+      baseAnim: 'angry',
+      choreoOverrides: { head:{s:10,a:0.4,ax:'x'} },
+      meta: { error: String(err?.message || err), timestamp: Date.now() }
     });
   }
 }
-
-// init
-function initChat() {
-  attachUI();
-  // initial UI message
-  appendChat('3D модель загружена', 'chat-bot');
-  // expose helper for debugging
-  window.chatSendMessage = sendMessage;
-  // ensure bubble hidden initially
-  setBubble('');
-}
-
-// auto init when DOM ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initChat);
-} else {
-  initChat();
-}
-
-// export for module usage
-export { sendMessage, postChat, playSpeech, handleCommands };
