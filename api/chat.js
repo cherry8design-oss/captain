@@ -1,4 +1,4 @@
-// api/chat.js
+// api/chat.js 
 import Groq from 'groq-sdk';
 import fetch from 'node-fetch';
 
