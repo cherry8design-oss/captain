@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Captain 3D — Unified Chat</title>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/"
+  }
+}
+</script>
+
+<style>
+:root{
+  --radius:12px;
+  --accent-grad: linear-gradient(90deg,#4facfe,#00f2fe);
+  --muted:#6b7280;
+  --term-bg: rgba(18,18,18,0.92);
+  --term-green:#7CFF8A;
+  --soft-shadow: 0 12px 30px rgba(2,6,23,0.08);
+  --btn-shadow: 0 8px 20px rgba(31,111,235,0.12);
+  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+html,body{height:100%;margin:0;font-family:var(--font);background:linear-gradient(180deg,#eef2f7 0,#fff 100%);color:#111}
+
+/* Root container */
+#captain-root{position:relative;width:100%;height:720px;max-height:85vh;border-radius:var(--radius);overflow:hidden;}
+
+/* 3D container */
+#captain-3d-container{width:100%;height:100%;background:transparent;}
+
+/* Bubble (TTS) */
+#captain-bubble-box{display:none;position:absolute;transform:translate(-50%,-120%);background:linear-gradient(180deg,#fff,#fbfbfb);border:2px solid rgba(20,20,20,0.06);border-radius:18px;padding:12px 16px;box-shadow:0 12px 30px rgba(0,0,0,0.12);color:#111;font-weight:700;font-size:15px;max-width:320px;z-index:9999;pointer-events:none;transition:opacity .18s ease, transform .18s ease;}
+#captain-bubble-box .tail{position:absolute;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:12px solid rgba(255,255,255,0.98);left:50%;transform:translateX(-50%);bottom:-10px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.08));}
+.bubble-dots span{display:inline-block;width:6px;height:6px;margin:0 2px;border-radius:50%;background:#888;animation:dotPulse 1s infinite linear;}
+@keyframes dotPulse{0%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}100%{transform:translateY(0);opacity:.4}}
+
+/* Shell for UI */
+#chat-shell{position:absolute;left:18px;right:18px;bottom:18px;z-index:60;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:10px}
+
+/* Curtain (absolute pinned area) */
+#pinned-curtain{position:absolute;left:50%;transform:translateX(-50%);top:0;z-index:80;pointer-events:auto;width:min(920px,calc(100% - 36px));transition:transform .28s cubic-bezier(.2,.9,.2,1),opacity .18s}
+#pinned-shell{position:relative;border-radius:12px;overflow:visible}
+#pinned-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:12px 12px 0 0;background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.94));box-shadow:0 8px 24px rgba(2,6,23,0.08);cursor:grab}
+#pinned-handle{width:36px;height:6px;background:rgba(0,0,0,0.08);border-radius:4px}
+#pinned-preview{color:var(--muted);font-size:13px;max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pinned-content{position:relative;background:transparent;padding:10px 12px;border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(2,6,23,0.06);display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto;-webkit-overflow-scrolling:touch}
+
+/* collapsed/expanded states */
+#pinned-curtain.collapsed #pinned-content{display:none}
+#pinned-curtain.collapsed{transform:translate(-50%,-6px);opacity:0.98}
+#pinned-curtain.expanded{transform:translate(-50%,0);opacity:1}
+
+/* pinned message */
+.pinned-msg{display:inline-block;background:var(--term-bg);color:var(--term-green);padding:10px 14px;border-radius:10px;font-family:ui-monospace,monospace;font-size:13px;box-shadow:0 8px 20px rgba(0,0,0,0.18);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:transform .18s,opacity .18s;cursor:default}
+.pinned-msg.enter{transform:translateY(-8px) scale(.995);opacity:0}
+.pinned-msg.enter.active{transform:translateY(0) scale(1);opacity:1}
+.pinned-msg:hover{transform:translateY(-2px) scale(1.01);box-shadow:0 12px 28px rgba(0,0,0,0.22)}
+
+/* Input panel */
+#input-panel{pointer-events:auto;width:min(920px,calc(100% - 36px));border-radius:12px;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.94));box-shadow:var(--soft-shadow);display:flex;flex-direction:column;gap:8px;transition:margin-top .18s ease}
+.input-row{display:flex;gap:8px;align-items:center}
+#captain-input-field{flex:1;padding:12px 14px;border-radius:10px;border:1px solid #e6e9ef;font-size:15px;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.6)}
+#captain-input-field:focus{box-shadow:0 8px 24px rgba(31,111,235,0.12);border-color:#9ecbff}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;color:#fff;box-shadow:var(--btn-shadow);transition:transform .12s ease,box-shadow .12s ease}
+.btn:active{transform:translateY(1px)}
+.btn:focus{outline:3px solid rgba(31,111,235,0.14)}
+.btn-send{background:var(--accent-grad);min-width:84px}
+.btn-mic{background:linear-gradient(90deg,#ff8a00,#ff5a5f);min-width:56px}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(0,0,0,0.06);padding:8px 10px;border-radius:8px}
+.controls-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.controls-left{display:flex;gap:8px;align-items:center}
+.range{width:140px}
+.microcopy{font-size:12px;color:var(--muted)}
+
+/* Responsive */
+@media (max-width:720px){
+  #pinned-curtain,#input-panel{width:calc(100% - 24px)}
+  .pinned-msg{max-width:78vw;font-size:13px}
+  #pinned-preview{max-width:36vw}
+}
+</style>
+</head>
+<body>
+<div id="captain-root" aria-live="polite">
+  <div id="captain-3d-container" aria-hidden="false"></div>
+
+  <div id="captain-bubble-box" role="status" aria-live="polite">
+    <div id="captain-bubble-text">...</div>
+    <span class="bubble-dots" id="bubble-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+    <div class="tail"></div>
+  </div>
+
+  <div id="chat-shell" aria-hidden="false">
+    <!-- Curtain (pinned messages) -->
+    <div id="pinned-curtain" class="collapsed" role="region" aria-label="Pinned messages curtain">
+      <div id="pinned-shell">
+        <div id="pinned-header">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div id="pinned-handle"></div>
+            <strong style="font-size:14px">Капитан</strong>
+            <div id="pinned-preview" class="microcopy">(нет сообщений)</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="pinned-toggle-btn" aria-expanded="false" title="Свернуть/развернуть" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:#fff;cursor:pointer">▲</button>
+          </div>
+        </div>
+        <div id="pinned-content"></div>
+      </div>
+    </div>
+
+    <!-- Input panel -->
+    <div id="input-panel" role="region" aria-label="Input panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div id="drag-handle" style="width:36px;height:6px;background:rgba(0,0,0,0.08);border-radius:4px"></div>
+          <strong style="font-size:15px">Капитан</strong>
+          <div id="captain-last-preview" class="microcopy">(нет сообщений)</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label class="microcopy" style="margin-right:6px">Voice</label>
+          <select id="voice-select" aria-label="Select voice" style="min-width:160px"></select>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <input id="captain-input-field" placeholder="Напишите сообщение..." aria-label="Message input" />
+        <button id="captain-send-btn" class="btn btn-send" aria-label="Send message">Send</button>
+        <button id="captain-mic-btn" class="btn btn-mic" aria-label="Start voice input">🎤</button>
+        <button id="captain-undo-btn" class="btn-ghost" aria-label="Undo last message">Undo</button>
+        <button id="captain-clear-btn" class="btn-ghost" aria-label="Clear pinned messages">Clear</button>
+      </div>
+
+      <div class="controls-row">
+        <div class="controls-left">
+          <label class="microcopy">Rate</label>
+          <input id="captain-rate" class="range" type="range" min="0.6" max="1.6" step="0.05" value="1" aria-label="Speech rate" />
+          <label class="microcopy">Vol</label>
+          <input id="captain-volume" class="range" type="range" min="0" max="1" step="0.05" value="1" aria-label="Speech volume" />
+        </div>
+        <div class="microcopy">Tip: press Enter to send. Hover elements for quick help.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+/* CONFIG */
+const CONFIG = {
+  api: 'https://project-6phnz.vercel.app/api/chat',
+  errorEndpoint: 'https://project-6phnz.vercel.app/api/log',
+  modelUrl: 'https://cherrydesign.shop/wp-content/uploads/models/us5.glb',
+  animUrl: 'https://cherrydesign.shop/wp-content/uploads/models/3_default.glb',
+  dracoBase: 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/',
+  bones: { head: 'Head', jaw: 'JawRoot' },
+  fetchTimeoutMs: 12000,
+  fetchRetries: 2,
+  maxSpeechLength: 1400,
+  bubbleThrottleMs: 40,
+  modelScale: 0.75,
+  bubbleOffsetX: 60,
+  bubbleOffsetY: -30,
+  shadow: { baseScaleFactor: 0.9, minOpacity: 0.12, maxOpacity: 0.6 }
+};
+
+/* UI refs */
+const containerEl = document.getElementById('captain-3d-container');
+const pinnedCurtain = document.getElementById('pinned-curtain');
+const pinnedContent = document.getElementById('pinned-content');
+const pinnedPreview = document.getElementById('pinned-preview');
+const pinnedToggle = document.getElementById('pinned-toggle-btn');
+const pinnedHandle = document.getElementById('pinned-handle');
+const inputPanel = document.getElementById('input-panel');
+const pinnedHeader = document.getElementById('pinned-header');
+
+const inputEl = document.getElementById('captain-input-field');
+const sendBtn = document.getElementById('captain-send-btn');
+const micBtn = document.getElementById('captain-mic-btn');
+const undoBtn = document.getElementById('captain-undo-btn');
+const clearBtn = document.getElementById('captain-clear-btn');
+const rateEl = document.getElementById('captain-rate');
+const volumeEl = document.getElementById('captain-volume');
+const voiceSelect = document.getElementById('voice-select');
+const bubbleEl = document.getElementById('captain-bubble-box');
+const bubbleTextEl = document.getElementById('captain-bubble-text');
+const bubbleDotsEl = document.getElementById('bubble-dots');
+const lastPreview = document.getElementById('captain-last-preview');
+
+let scene, camera, renderer, clock = new THREE.Clock();
+let model = null, bones = {}, mixer = null;
+let rafId = null;
+window.mouseObserver = { x:0, y:0 };
+let isThinking = false, isTalking = false;
+let currentUtterance = null;
+let requestInProgress = false;
+let activeRec = null;
+
+/* Global API + queue */
+window.captain = window.captain || {};
+window.captain._q = window.captain._q || [];
+
+/* Internal stack for undo */
+const pinnedStack = [];
+
+/* Pinned curtain logic */
+(function(){
+  const HEADER_H = pinnedHeader.getBoundingClientRect().height || 56;
+  let curtainHeight = Math.min(window.innerHeight * 0.36, 420);
+  let collapsed = true;
+  pinnedCurtain.classList.add('collapsed');
+  pinnedCurtain.classList.remove('expanded');
+  pinnedToggle.textContent = '▲';
+  pinnedToggle.setAttribute('aria-expanded','false');
+
+  function applyCollapsedState(){
+    pinnedCurtain.classList.add('collapsed'); pinnedCurtain.classList.remove('expanded');
+    pinnedToggle.textContent = '▲'; pinnedToggle.setAttribute('aria-expanded','false');
+    if(inputPanel) inputPanel.style.marginTop = (HEADER_H + 12) + 'px';
+  }
+  function applyExpandedState(){
+    pinnedCurtain.classList.remove('collapsed'); pinnedCurtain.classList.add('expanded');
+    pinnedToggle.textContent = '▼'; pinnedToggle.setAttribute('aria-expanded','true');
+    if(inputPanel) inputPanel.style.marginTop = (curtainHeight + 18) + 'px';
+  }
+  applyCollapsedState();
+
+  pinnedToggle.addEventListener('click', (e)=>{ e.stopPropagation(); collapsed = !collapsed; if(collapsed) applyCollapsedState(); else applyExpandedState(); });
+
+  pinnedHeader.addEventListener('click', (e)=>{ if(e.target === pinnedToggle) return; collapsed = !collapsed; if(collapsed) applyCollapsedState(); else applyExpandedState(); });
+
+  let dragging = false, startY = 0, startH = 0;
+  function startDrag(e){ dragging = true; startY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY; startH = curtainHeight; pinnedCurtain.style.transition = 'none'; document.body.style.userSelect = 'none'; }
+  function onDrag(e){ if(!dragging) return; const y = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY; const dy = startY - y; const rootH = window.innerHeight; const maxH = Math.min(rootH * 0.8, 720); const minH = HEADER_H + 8; let newH = Math.min(Math.max(startH + dy, minH), maxH); curtainHeight = newH; pinnedCurtain.style.height = curtainHeight + 'px'; if(curtainHeight > rootH * 0.28){ collapsed = false; applyExpandedState(); } else { collapsed = true; applyCollapsedState(); } }
+  function endDrag(){ if(!dragging) return; dragging = false; pinnedCurtain.style.transition = ''; document.body.style.userSelect = ''; if(collapsed) applyCollapsedState(); else applyExpandedState(); }
+
+  pinnedHandle.addEventListener('mousedown', startDrag);
+  window.addEventListener('mousemove', onDrag);
+  window.addEventListener('mouseup', endDrag);
+  pinnedHandle.addEventListener('touchstart', startDrag, {passive:true});
+  window.addEventListener('touchmove', onDrag, {passive:true});
+  window.addEventListener('touchend', endDrag);
+
+  /* Pinned messages API */
+  window.captain.appendPinnedMessage = function(text, opts = {}) {
+    const maxVisible = opts.maxVisible || 3;
+    const tooltip = opts.tooltip || '';
+    const cls = opts.className || 'pinned-msg';
+    const el = document.createElement('div');
+    el.className = cls + ' enter';
+    if(tooltip) el.setAttribute('data-tooltip', tooltip);
+    el.textContent = text;
+    pinnedContent.insertBefore(el, pinnedContent.firstChild);
+    requestAnimationFrame(()=> el.classList.add('active'));
+    pinnedStack.unshift({ text, el });
+    const items = pinnedContent.querySelectorAll('.pinned-msg');
+    if(items.length > maxVisible){ const last = items[items.length - 1]; last.remove(); pinnedStack.pop(); }
+    const first = pinnedContent.querySelector('.pinned-msg');
+    if(first && first.textContent) pinnedPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
+    else pinnedPreview.textContent = '(нет сообщений)';
+    if(collapsed){ pinnedCurtain.classList.remove('collapsed'); pinnedCurtain.classList.add('expanded'); setTimeout(()=> { if(collapsed) applyCollapsedState(); }, 900); }
+    // update bottom preview
+    if(first && first.textContent) lastPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
+    else lastPreview.textContent = '(нет сообщений)';
+    return el;
+  };
+
+  window.captain.undoLastPinned = function() {
+    if(pinnedStack.length === 0) return null;
+    const item = pinnedStack.shift();
+    try{ if(item.el && item.el.parentNode) item.el.parentNode.removeChild(item.el); } catch(e){}
+    const first = pinnedContent.querySelector('.pinned-msg');
+    if(first && first.textContent) pinnedPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
+    else pinnedPreview.textContent = '(нет сообщений)';
+    if(first && first.textContent) lastPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
+    else lastPreview.textContent = '(нет сообщений)';
+    return item.text;
+  };
+
+  window.captain.clearPinned = function() { pinnedContent.innerHTML = ''; pinnedStack.length = 0; pinnedPreview.textContent = '(нет сообщений)'; lastPreview.textContent = '(нет сообщений)'; };
+
+  // expose open/close
+  window.captain.openCurtain = function(){ collapsed = false; applyExpandedState(); pinnedCurtain.style.height = curtainHeight + 'px'; };
+  window.captain.closeCurtain = function(){ collapsed = true; applyCollapsedState(); pinnedCurtain.style.height = ''; };
+
+  // initial margin for input panel
+  if(inputPanel) inputPanel.style.marginTop = (HEADER_H + 12) + 'px';
+})();
+
+/* Flush queued calls */
+(function flushQueue(){ const q = window.captain._q || []; while(q.length){ try{ const fn = q.shift(); if(typeof fn === 'function') fn(); } catch(e){ console.warn('captain queue item failed', e); } } window.captain._q = []; })();
+
+/* Helpers */
+function safeText(el, text){ if(!el) return; el.textContent = text; }
+async function logError(payload){ try{ if(!CONFIG.errorEndpoint) return; await fetch(CONFIG.errorEndpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); } catch(e){} }
+
+/* Voices */
+function saveVoicePrefs(){ try{ const prefs = { voiceURI: voiceSelect.value || '', rate: rateEl.value, volume: volumeEl.value }; localStorage.setItem('captain_voice_prefs', JSON.stringify(prefs)); }catch(e){} }
+function loadVoicePrefs(){ try{ const raw = localStorage.getItem('captain_voice_prefs'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
+function populateVoices(){ const voices = window.speechSynthesis.getVoices() || []; voiceSelect.innerHTML = ''; voices.sort((a,b)=> (a.lang||'').localeCompare(b.lang||'') || (a.name||'').localeCompare(b.name||'')); voices.forEach(v=>{ const opt = document.createElement('option'); opt.value = v.voiceURI || v.name; opt.textContent = `${v.name} — ${v.lang}`; voiceSelect.appendChild(opt); }); const prefs = loadVoicePrefs(); if(prefs){ if(prefs.voiceURI){ const found = Array.from(voiceSelect.options).find(o=>o.value===prefs.voiceURI); if(found) voiceSelect.value = prefs.voiceURI; } if(prefs.rate) rateEl.value = prefs.rate; if(prefs.volume) volumeEl.value = prefs.volume; } }
+if('speechSynthesis' in window){ populateVoices(); window.speechSynthesis.onvoiceschanged = populateVoices; }
+voiceSelect.addEventListener('change', saveVoicePrefs);
+rateEl.addEventListener('change', saveVoicePrefs);
+volumeEl.addEventListener('change', saveVoicePrefs);
+
+/* Typing indicator */
+function showTypingIndicator(id='typing'){ if(document.getElementById('typing-'+id)) return; const el = document.createElement('div'); el.id = 'typing-'+id; el.className = 'typing-indicator'; el.innerHTML = '<span style="opacity:.95;margin-right:8px;font-size:13px">Капитан печатает</span><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>'; pinnedContent.insertBefore(el, pinnedContent.firstChild); }
+function hideTypingIndicator(id='typing'){ const el = document.getElementById('typing-'+id); if(el) el.remove(); }
+
+/* 3D init (lazy) */
+let initCalled = false;
+async function init3D(){ if(initCalled) return; initCalled = true;
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(40, containerEl.clientWidth / containerEl.clientHeight, 0.1, 1000);
+  camera.position.set(0,1.05,1.9);
+  scene.add(new THREE.AmbientLight(0xffffff,1.2));
+  const sun = new THREE.DirectionalLight(0xffffff,0.9); sun.position.set(5,8,5); sun.castShadow=true; scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(10,10), new THREE.ShadowMaterial({opacity:0.06})); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+
+  renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.shadowMap.enabled = true;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.9;
+  if('outputColorSpace' in renderer && THREE.SRGBColorSpace) renderer.outputColorSpace = THREE.SRGBColorSpace;
+  else if('outputEncoding' in renderer && THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, isMobile?1.2:2));
+  renderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
+  containerEl.appendChild(renderer.domElement);
+
+  const manager = new THREE.LoadingManager();
+  const loader = new GLTFLoader(manager);
+  const draco = new DRACOLoader(); draco.setDecoderPath(CONFIG.dracoBase); loader.setDRACOLoader(draco);
+
+  try {
+    const gltf = await loader.loadAsync(CONFIG.modelUrl);
+    model = gltf.scene; model.scale.setScalar(CONFIG.modelScale);
+    const box = new THREE.Box3().setFromObject(model); const center = new THREE.Vector3(); box.getCenter(center);
+    model.position.x -= center.x; model.position.y -= box.min.y; model.position.y += 0.02;
+
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512;
+    const ctx = canvas.getContext('2d'); const grad = ctx.createRadialGradient(256,256,20,256,256,256);
+    grad.addColorStop(0,'rgba(0,0,0,0.9)'); grad.addColorStop(0.4,'rgba(0,0,0,0.45)'); grad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = grad; ctx.fillRect(0,0,512,512);
+    const tex = new THREE.CanvasTexture(canvas); tex.encoding = THREE.sRGBEncoding;
+    const shadowMat = new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false, opacity:CONFIG.shadow.maxOpacity, toneMapped:false});
+    const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1,1), shadowMat); shadowMesh.rotation.x=-Math.PI/2; shadowMesh.position.y=0.001; shadowMesh.renderOrder=2; scene.add(shadowMesh);
+    model.userData.shadowMesh = shadowMesh;
+
+    const highlight = new THREE.Mesh(new THREE.RingGeometry(0.6,0.85,64), new THREE.MeshBasicMaterial({color:0x1f6feb, transparent:true, opacity:0}));
+    highlight.rotation.x = -Math.PI/2; highlight.position.y = 0.01; highlight.visible = false; scene.add(highlight);
+    model.userData.highlightMesh = highlight;
+
+    model.traverse(c=>{ if(c.isMesh){ c.castShadow=true; c.receiveShadow=true; c.frustumCulled=true; if(c.material && 'envMapIntensity' in c.material) c.material.envMapIntensity = (c.material.envMapIntensity||1)*0.9; } if(c.isBone){ if(c.name.includes(CONFIG.bones.head)) bones.head = c; if(c.name.includes(CONFIG.bones.jaw)) bones.jaw = c; } });
+    scene.add(model);
+
+    mixer = new THREE.AnimationMixer(model);
+    try { const anim = await loader.loadAsync(CONFIG.animUrl); if(anim && anim.animations && anim.animations.length) mixer.clipAction(anim.animations[0]).play(); } catch(e){ console.warn('anim', e); }
+
+    model.userData.idleOffset = Math.random()*1000;
+    startLoop();
+  } catch(e){
+    console.error('model load', e); logError({where:'model_load', error:String(e)});
+    window.captain.appendPinnedMessage('Ошибка загрузки 3D-модели.');
+  }
+}
+if('IntersectionObserver' in window){
+  const io = new IntersectionObserver(entries=>{ entries.forEach(e=>{ if(e.isIntersecting) { init3D(); io.disconnect(); } }); }, {threshold:0.1});
+  io.observe(containerEl);
+} else { window.addEventListener('load', init3D); }
+
+/* Animation loop */
+function startLoop(){ if(rafId) cancelAnimationFrame(rafId); const loop = ()=>{ rafId = requestAnimationFrame(loop); const dt = clock.getDelta(); const t = clock.getElapsedTime(); if(mixer) mixer.update(dt); if(model){ const idle = 0.002 * Math.sin((t + model.userData.idleOffset) * 0.8); model.position.y = model.position.y + (idle * 0.5); camera.lookAt(model.position.x, 0.75, 0); if(bones.jaw) bones.jaw.rotation.x = isTalking ? Math.abs(Math.sin(t*15))*0.28 : THREE.MathUtils.lerp(bones.jaw.rotation.x, 0, 0.08); if(bones.head){ bones.head.rotation.y = THREE.MathUtils.lerp(bones.head.rotation.y, window.mouseObserver.x*0.45, 0.12); bones.head.rotation.x = THREE.MathUtils.lerp(bones.head.rotation.x, (window.mouseObserver.y||0)*0.12, 0.12); } if(model.userData.shadowMesh){ const shadow = model.userData.shadowMesh; const box = new THREE.Box3().setFromObject(model); const size = box.getSize(new THREE.Vector3()); const maxDim = Math.max(size.x, size.z, 0.2); const worldPos = new THREE.Vector3(); model.getWorldPosition(worldPos); shadow.position.x = worldPos.x; shadow.position.z = worldPos.z; const scale = Math.max(0.2, maxDim * CONFIG.shadow.baseScaleFactor); shadow.scale.set(scale, scale, 1); const height = Math.max(0, worldPos.y); const tOpacity = Math.min(1, Math.max(0, 1 - (height / 1.5))); shadow.material.opacity = CONFIG.shadow.minOpacity + (CONFIG.shadow.maxOpacity - CONFIG.shadow.minOpacity) * tOpacity; } if(model.userData.highlightMesh){ const hm = model.userData.highlightMesh; const worldPos = new THREE.Vector3(); model.getWorldPosition(worldPos); hm.position.x = worldPos.x; hm.position.z = worldPos.z; if(isTalking){ hm.visible = true; const pulse = 0.9 + 0.1 * Math.sin(clock.getElapsedTime()*8); hm.scale.set(pulse,pulse,1); hm.material.opacity = 0.25 + 0.15 * Math.abs(Math.sin(clock.getElapsedTime()*4)); } else { hm.scale.lerp(new THREE.Vector3(1,1,1), 0.08); hm.material.opacity = THREE.MathUtils.lerp(hm.material.opacity, 0.0, 0.08); if(hm.material.opacity < 0.01) hm.visible = false; } } updateBubblePositionThrottled(); } if(renderer && camera) renderer.render(scene, camera); }; loop(); }
+
+/* Bubble positioning */
+let lastBubbleUpdate = 0;
+function updateBubblePositionThrottled(){ const now = performance.now(); if(now - lastBubbleUpdate < CONFIG.bubbleThrottleMs) return; lastBubbleUpdate = now; updateBubblePosition(); }
+function updateBubblePosition(){ if(!bubbleEl || !model) return; if(!isThinking && !isTalking){ bubbleEl.style.display='none'; bubbleEl.setAttribute('aria-hidden','true'); return; } const target = bones.jaw || bones.head || model; const worldPos = new THREE.Vector3(); target.getWorldPosition(worldPos); worldPos.project(camera); const rect = containerEl.getBoundingClientRect(); const sx = (worldPos.x * 0.5 + 0.5) * rect.width + rect.left; const sy = (worldPos.y * -0.5 + 0.5) * rect.height + rect.top; const x = sx + CONFIG.bubbleOffsetX; const y = sy + CONFIG.bubbleOffsetY; bubbleEl.style.left = Math.round(x) + 'px'; bubbleEl.style.top = Math.round(y) + 'px'; bubbleEl.style.display='block'; bubbleEl.style.opacity='1'; bubbleEl.setAttribute('aria-hidden','false'); }
+
+/* Networking and TTS */
+function cancelSpeech(){ try{ if(currentUtterance){ currentUtterance.onend=null; currentUtterance.onerror=null; currentUtterance=null; } if('speechSynthesis' in window) window.speechSynthesis.cancel(); }catch(e){} }
+function selectVoiceByURI(uri){ const voices = window.speechSynthesis.getVoices() || []; return voices.find(v => (v.voiceURI === uri || v.name === uri)) || null; }
+
+window.sendAction = async function(){
+  if(!inputEl) return; if(requestInProgress) return;
+  const raw = inputEl.value || ''; const msg = raw.trim(); if(!msg) return;
+  window.captain.appendPinnedMessage(msg, { className:'pinned-msg chat-user' }); inputEl.value=''; inputEl.focus();
+  showTypingIndicator();
+  isThinking = true; isTalking = false;
+  requestInProgress = true; sendBtn.disabled = true; inputEl.disabled = true;
+
+  try{
+    cancelSpeech();
+    let attempt=0, data=null, lastErr=null;
+    while(attempt <= CONFIG.fetchRetries){
+      const controller = new AbortController(); const timeoutId = setTimeout(()=>controller.abort(), CONFIG.fetchTimeoutMs);
+      try{
+        const res = await fetch(CONFIG.api, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg }), signal: controller.signal });
+        clearTimeout(timeoutId); if(!res.ok) throw new Error('HTTP ' + res.status); data = await res.json(); break;
+      } catch(e){ clearTimeout(timeoutId); lastErr = e; attempt++; if(attempt <= CONFIG.fetchRetries) await new Promise(r=>setTimeout(r, 400 * Math.pow(2, attempt-1))); }
+    }
+
+    hideTypingIndicator();
+    if(!data){ console.error('Fetch failed', lastErr); logError({where:'send_fetch', error:String(lastErr), message:msg}); window.captain.appendPinnedMessage('Ошибка сети. Попробуйте ещё раз.', { className:'pinned-msg chat-bot' }); isThinking=false; bubbleEl.style.display='none'; return; }
+
+    const text = (typeof data.speech === 'string') ? data.speech : String(data.speech || data.reply || data.text || '');
+    window.captain.appendPinnedMessage(text, { className:'pinned-msg chat-bot' }); safeText(bubbleTextEl, text);
+    const speechText = text.slice(0, CONFIG.maxSpeechLength);
+
+    try{
+      if(!('speechSynthesis' in window) || parseFloat(volumeEl.value||1) === 0){
+        isThinking=false; isTalking=false; setTimeout(()=>{ bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; }, 800);
+      } else {
+        currentUtterance = new SpeechSynthesisUtterance(speechText);
+        const selectedURI = voiceSelect.value; const voice = selectVoiceByURI(selectedURI); if(voice) currentUtterance.voice = voice;
+        currentUtterance.lang = voice?.lang || 'ru-RU'; currentUtterance.rate = parseFloat(rateEl.value||1); currentUtterance.volume = parseFloat(volumeEl.value||1);
+
+        currentUtterance.onstart = () => { isThinking=false; isTalking=true; bubbleDotsEl.style.visibility='hidden'; if(model && model.userData.highlightMesh) model.userData.highlightMesh.visible = true; try{ localStorage.setItem('captain_voice_prefs', JSON.stringify({voiceURI:voiceSelect.value||'', rate:rateEl.value, volume:volumeEl.value})); }catch(e){} };
+        currentUtterance.onend = () => { isTalking=false; isThinking=false; currentUtterance=null; if(model && model.userData.highlightMesh) model.userData.highlightMesh.visible = false; setTimeout(()=>{ bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; }, 1200); };
+        currentUtterance.onerror = (ev) => { console.warn('TTS error', ev); logError({where:'tts_error', error:String(ev)}); isTalking=false; isThinking=false; currentUtterance=null; if(model && model.userData.highlightMesh) model.userData.highlightMesh.visible = false; bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; };
+
+        window.speechSynthesis.speak(currentUtterance);
+      }
+    } catch(e){ console.warn('TTS failed', e); logError({where:'tts_exception', error:String(e)}); isTalking=false; isThinking=false; bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; }
+  } catch(err){ console.error('sendAction', err); logError({where:'send_top', error:String(err)}); window.captain.appendPinnedMessage('Ошибка сервера. Попробуйте позже.', { className:'pinned-msg chat-bot' }); isThinking=false; isTalking=false; }
+  finally { requestInProgress=false; sendBtn.disabled=false; inputEl.disabled=false; }
+};
+
+/* Microphone */
+micBtn.addEventListener('click', async ()=>{
+  if(activeRec) return;
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRec){ window.captain.appendPinnedMessage('Voice input not supported in this browser.', { className:'pinned-msg chat-bot' }); return; }
+  try{
+    const rec = new SpeechRec(); activeRec = rec; rec.lang = 'ru-RU'; rec.interimResults = false; rec.maxAlternatives = 1;
+    micBtn.disabled = true; micBtn.textContent = 'Listening...';
+    rec.onresult = (ev)=>{ const t = ev.results[0][0].transcript; inputEl.value = t; micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; window.sendAction(); };
+    rec.onerror = (ev)=>{ window.captain.appendPinnedMessage('Voice recognition error', { className:'pinned-msg chat-bot' }); micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; logError({where:'speechrec_error', error:String(ev)}); };
+    rec.onend = ()=>{ micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; };
+    rec.start();
+  } catch(e){ console.warn('mic start', e); micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; logError({where:'mic_start', error:String(e)}); }
+});
+
+/* UI bindings */
+sendBtn.addEventListener('click', ()=> window.sendAction());
+inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); window.sendAction(); } });
+
+undoBtn.addEventListener('click', ()=> {
+  const removed = window.captain.undoLastPinned();
+  if(removed) window.captain.appendPinnedMessage('Undo: ' + removed, { className:'pinned-msg chat-bot', maxVisible:1 });
+});
+clearBtn.addEventListener('click', ()=> { window.captain.clearPinned(); window.captain.appendPinnedMessage('Чат очищен', { className:'pinned-msg chat-bot' }); });
+
+[sendBtn, micBtn, undoBtn, clearBtn].forEach(b => {
+  b.addEventListener('mouseenter', ()=> b.style.transform = 'translateY(-2px)');
+  b.addEventListener('mouseleave', ()=> b.style.transform = '');
+  b.addEventListener('mousedown', ()=> b.style.transform = 'translateY(0)');
+  b.addEventListener('mouseup', ()=> b.style.transform = 'translateY(-2px)');
+});
+
+window.addEventListener('mousemove', e=>{ window.mouseObserver.x = (e.clientX / window.innerWidth) * 2 - 1; window.mouseObserver.y = (e.clientY / window.innerHeight) * 2 - 1; }, {passive:true});
+window.addEventListener('touchmove', e=>{ if(!e.touches||!e.touches[0]) return; const t=e.touches[0]; window.mouseObserver.x=(t.clientX/window.innerWidth)*2-1; window.mouseObserver.y=(t.clientY/window.innerHeight)*2-1; }, {passive:true});
+
+window.addEventListener('resize', ()=>{ if(!camera||!renderer||!containerEl) return; camera.aspect = containerEl.clientWidth / containerEl.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(containerEl.clientWidth, containerEl.clientHeight); });
+
+document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState !== 'visible' && window.speechSynthesis) window.speechSynthesis.pause(); if(document.visibilityState === 'visible' && window.speechSynthesis) window.speechSynthesis.resume(); }catch(e){} });
+
+/* Register SW */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').then(()=>console.log('sw registered')).catch(err=>{ console.warn('sw failed', err); logError({where:'sw_register', error:String(err)}); }); });
+}
+</script>
+</body>
+</html> вот наш код
