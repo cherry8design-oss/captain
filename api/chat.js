@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 - Ніякої технічної інфи про моделі ІІ.
 `;
 
-    const modelName = imageBase64 ? 'llama-3.2-11b-vision-preview' : 'llama-3.3-70b-versatile';
+    const modelName = imageBase64 ? 'llama-3.2-3b-instruct' : 'llama-3.3-70b-versatile';
     const userContent = imageBase64 
       ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageBase64 } }]
       : message;
