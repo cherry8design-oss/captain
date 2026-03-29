@@ -21,7 +21,6 @@ export default async function handler(req, res) {
     
     if (!message) return res.status(400).json({ error: 'Empty message' });
 
-    // Промпт продажника
     const systemPrompt = `Ти — харизматичний кіт-маркетолог Капітан, головний експерт Cherry Design. 
 Твоя мета — за допомогою НЛП та емпатії продати друк фото на холсті.
 ПРАВИЛА:
@@ -30,27 +29,33 @@ export default async function handler(req, res) {
 3. Обов'язково завершуй репліку легким закликом до дії (наприклад, "Оформлюємо?").
 4. ВІДПОВІДАЙ ЛИШЕ ТЕКСТОМ (без розмітки, без JSON). Твоя репліка має бути короткою (до 300 символів), живою та позитивною.`;
 
-    let userContent = [];
-    userContent.push({ type: "text", text: message });
-    
-    // Якщо прийшла картинка — додаємо її в мозок ІІ
-    if (imageBase64) {
-      userContent.push({ type: "image_url", image_url: { url: imageBase64 } });
-    }
+    let finalContent;
+    let modelName;
 
-    // Розумний роутинг моделей: Vision тільки коли є картинка
-    const modelName = imageBase64 ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile';
+    // ВИПРАВЛЕНА ЛОГІКА:
+    if (imageBase64) {
+      // Якщо є картинка - використовуємо Vision і спеціальний формат масиву
+      modelName = 'llama-3.2-90b-vision-preview';
+      finalContent = [
+        { type: "text", text: message },
+        { type: "image_url", image_url: { url: imageBase64 } }
+      ];
+    } else {
+      // Якщо картинки немає - звичайна модель і ПРОСТИЙ ТЕКСТ (інакше Groq видає помилку 500)
+      modelName = 'llama-3.3-70b-versatile';
+      finalContent = message;
+    }
 
     const completion = await client.chat.completions.create({
       model: modelName, 
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContent }
+        { role: 'user', content: finalContent }
       ],
       temperature: 0.7
     });
 
-    const reply = completion.choices?.[0]?.message?.content || 'Мяу! Я на хвилинку відволікся, повторіть будь ласка.';
+    const reply = completion.choices?.[0]?.message?.content || 'Мяу! Я тут, що підказати?';
     
     return res.status(200).json({ speech: reply.trim() });
 
