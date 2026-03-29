@@ -17,52 +17,45 @@ export default async function handler(req, res) {
     const client = new Groq({ apiKey });
     const { message, imageBase64 } = req.body || {};
 
-    const systemPrompt = `ТТи — Капітан, елітний бренд-консультант Cherry Design. Твоя мова — це поєднання мистецтвознавця та вовка з Уолл-стріт.
-ТВОЯ ЗАДАЧА: Продати преміальний холст, використовуючи глибокий аналіз.
+    // НОВИЙ СУВОРИЙ ПРОМПТ
+    const systemPrompt = `Ти — Капітан Cherry Design. Лаконічний, впевнений, дорогий. 
+ТВОЄ ЗАВДАННЯ: Продати холст ОДНИМ коротким реченням. 
 
-ЯКЩО КЛІЄНТ ЗАВАНТАЖИВ ФОТО:
-1. Проаналізуй палітру (наприклад: "теплі пастельні тони", "глибокий контраст").
-2. Опиши композицію: чому вона ідеально підходить для галерейної натяжки.
-3. Зроби професійний висновок: як текстура полотна підкреслить деталі саме цього фото.
-4. М'яко підштовхни до вибору великого формату (60х40 або 80x60), бо "така глибина кадру потребує масштабу".
+ЯКЩО Є ФОТО: Оціни одним фактом (колір чи композиція) .
+ЯКЩО ПРОСТО ТЕКСТ: Дай одну емоційну фразу про стиль або преміальну якість.
 
-ЯКЩО КЛІЄНТ ПРОСТО ПИШЕ:
-Використовуй NLP: приєднуйся до емоцій, малюй картину майбутнього ("Уявіть аромат сосни та посмішки гостей..."). 
-Відповідай українською, коротко (до 300 символів), дорого та впевнено.
-`;
+ПРАВИЛО: Відповідь має бути довжиною до 150 символів. Рівно ОДНЕ речення. Жодної води. Мова: українська.`;
 
-    // АКТУАЛЬНІ МОДЕЛІ 2026
     const VISION_MODEL = 'llama-3.2-11b-vision'; 
     const TEXT_MODEL = 'llama-3.3-70b-versatile';
 
     let response;
     try {
-      // Спроба використати зір, якщо є фото
       const model = imageBase64 ? VISION_MODEL : TEXT_MODEL;
       const content = imageBase64 
-        ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageBase64 } }]
+        ? [{ type: "text", text: "Оціни це фото одним реченням для продажу холста." }, { type: "image_url", image_url: { url: imageBase64 } }]
         : message;
 
       response = await client.chat.completions.create({
         model: model,
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: content }],
-        temperature: 0.7,
-        max_tokens: 350
+        temperature: 0.5, // Зменшив температуру для стабільності лаконічності
+        max_tokens: 60 // Обмежив токени, щоб він фізично не міг написати багато
       });
     } catch (modelErr) {
-      // Якщо Vision модель недоступна (decommissioned), миттєво перемикаємось на текст
       console.error("Switching to text-only mode");
       response = await client.chat.completions.create({
         model: TEXT_MODEL,
         messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
-        temperature: 0.7
+        temperature: 0.5,
+        max_tokens: 60
       });
     }
 
-    const reply = response.choices?.[0]?.message?.content || 'Бос, я на зв’язку!';
+    const reply = response.choices?.[0]?.message?.content || 'Бос, цей кадр вартий преміального полотна 60х40.';
     return res.status(200).json({ speech: reply.trim() });
 
   } catch (err) {
-    return res.status(200).json({ speech: `Мяу! Проблема з API: ${err.message.split(':')[0]}. Але я готовий до друку!` });
+    return res.status(200).json({ speech: `Помилка: ${err.message.split(':')[0]}. Але я готовий друкувати!` });
   }
 }
