@@ -17,40 +17,35 @@ export default async function handler(req, res) {
     const client = new Groq({ apiKey });
     const { message, imageBase64 } = req.body || {};
 
-    const systemPrompt = `Ти — Капітан, елітний бренд-амбасадор Cherry Design. 
-Твоя мета — продати друк на холсті. Будь професійним психологом та маркетологом.
-1. Хвали вибір клієнта. 2. Описуй естетику (дерево, текстура полотна). 3. Закривай угоду запитанням про розмір.
-Відповідай коротко (до 250 символів) українською мовою.`;
+    // Елітний NLP-промпт
+    const systemPrompt = `Ти — Капітан, елітний експерт Cherry Design. Твоя мова — це психологія естетики.
+СТРАТЕГІЯ: 
+1. Якщо є фото: зроби комплімент стилю, світлу чи емоції. Клієнт має відчути, що це фото варте галереї.
+2. Продавай не папір, а "центр тяжіння в інтер'єрі" та "аромат справжнього дерева".
+3. Використовуй NLP-закриття: "Який формат зробить цей кадр величним — класика чи гранд-панорама?".
+Мова: Українська. Стиль: Впевнений, дорогий. Довжина: до 280 символів.`;
 
-    // ВИПРАВЛЕНО: Використовуємо тільки актуальні моделі
-    // Якщо Vision-модель відсутня, ми просто шлемо текст, щоб чат не падав
-    let modelName = 'llama-3.3-70b-versatile'; 
-    let userContent = message;
-
-    if (imageBase64) {
-      // Спробуємо використати актуальну Vision модель, якщо вона доступна
-      modelName = 'llama-3.2-11b-vision-preview'; 
-      userContent = [
-        { type: "text", text: message },
-        { type: "image_url", image_url: { url: imageBase64 } }
-      ];
-    }
+    const modelName = imageBase64 ? 'llama-3.2-11b-vision-preview' : 'llama-3.3-70b-versatile';
+    
+    let content = [{ type: "text", text: message }];
+    if (imageBase64) content.push({ type: "image_url", image_url: { url: imageBase64 } });
 
     const completion = await client.chat.completions.create({
       model: modelName,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContent }
+        { role: 'user', content: content }
       ],
-      temperature: 0.7
+      temperature: 0.7,
+      max_tokens: 400
     });
 
-    const reply = completion.choices?.[0]?.message?.content || 'Бос, я на зв’язку!';
+    const reply = completion.choices?.[0]?.message?.content || 'Бос, я на зв’язку, готовий створювати шедевр!';
     return res.status(200).json({ speech: reply.trim() });
 
   } catch (err) {
     console.error('Groq Error:', err);
-    // Якщо Vision модель видала помилку "decommissioned", Капітан ввічливо перепросить
-    return res.status(200).json({ speech: `Мяу! Бос, Groq знову міняє моделі (Помилка: ${err.message.split('{')[0]}). Але я все одно готовий працювати!` });
+    // Повертаємо 200, щоб Капітан сам озвучив помилку, а не вішав сайт
+    return res.status(200).json({ speech: `Мяу! Бос, Groq каже: ${err.message.split(' (')[0]}. Але я все одно готовий до друку!` });
   }
 }
