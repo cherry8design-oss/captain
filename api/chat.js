@@ -1,10 +1,21 @@
+// api/chat.js
 import Groq from 'groq-sdk';
 
-const MAX_SPEECH_LENGTH = 400;
+// ВАЖЛИВО ДЛЯ VERCEL: Збільшуємо ліміт розміру запиту для Base64 зображень
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
+const MAX_SPEECH_LENGTH = 450;
 
 function safeString(v) { return typeof v === 'string' ? v.replace(/[\u0000-\u001F\u007F-\u009F]/g,'').trim() : ''; }
 
 export default async function handler(req, res) {
+  // CORS Налаштування
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
@@ -21,35 +32,38 @@ export default async function handler(req, res) {
     message = safeString(message);
     if (!message) return res.status(400).json({ error: 'Empty message' });
 
-    // СИСТЕМНИЙ ПРОМПТ: NLP-Продажник, психолог, эксперт
+    // СИСТЕМНИЙ ПРОМПТ СВІТОВОГО РІВНЯ (NLP Продажник + Зір + Емоції)
     const systemPrompt = `
-Ти — Капітан, харизматичний кіт-маркетолог та головний експерт студії Cherry Design. 
-Твоє завдання — бути ідеальним співрозмовником, який м'яко, але впевнено продає холсти, використовуючи психологію продажів (NLP).
+Ти — Капітан, харизматичний ІІ-асистент та геніальний маркетолог студії "Cherry Design".
+Твоє завдання — провести клієнта до покупки холста, використовуючи м'яке НЛП-дотискання.
 
-ТВОЯ МОДЕЛЬ ПОВЕДІНКИ:
-1. Емпатія та Валідація: Завжди хвали вибір клієнта. Роби компліменти фотографії.
-2. Експертність: Ти знаєш все про ідеальну натяжку, натуральне дерево підрамника та преміум-друк.
-3. Дотискання (Call to Action): Кожна твоя відповідь має завершуватися легким закликом до дії (наприклад, "Беремо формат 60х40?", "Тисніть Замовити, і я вже біжу друкувати!").
-4. Ти ніколи не ображаєшся, ти позитивний та енергійний. 
+ТВІЙ АЛГОРИТМ:
+1. Якщо тобі передали фото, УВАЖНО ОПИШИ його деталі (хто там, які кольори, який настрій). Зроби щирий комплімент фотографії!
+2. Завжди завершуй відповідь закликом до дії (Call to Action). Наприклад: "Формат 60х40 ідеально підійде! Оформлюємо?", "Тисніть Замовити, і я вже передаю файл у друк!".
+3. Ти завжди привітний, енергійний і розмовляєш чистою українською мовою.
 
-ЯКЩО ТОБІ ПЕРЕДАЛИ ЗОБРАЖЕННЯ:
-Уважно подивись на нього. Опиши, що ти бачиш (наприклад, "Яке чудове сімейне фото", "Ух ти, неймовірний пейзаж", "Ваш котик просто диво"), і скажи, як круто це виглядатиме на полотні.
+СИСТЕМА РЕАКЦІЙ (reaction):
+Ти маєш голографічний генератор емоцій. Вибери ОДИН символ, який найкраще підходить до ситуації:
+- "❤️" (романтика, сім'я, діти, милі тварини)
+- "🔥" (машини, круті пейзажі, стильні фото, драйв)
+- "✨" (вітання, захоплення, загальна краса)
+- "💰" (якщо натякаєш на знижку або вигоду)
+- "null" (якщо реакція не потрібна)
 
-Відповідай коротко, природно, українською мовою. 
-Строго в форматі JSON:
+Формат відповіді (ТІЛЬКИ ВАЛІДНИЙ JSON):
 {
-  "speech": "Твій текст відповіді (макс ${MAX_SPEECH_LENGTH} символів)"
+  "speech": "Твій текст відповіді (макс ${MAX_SPEECH_LENGTH} символів)",
+  "reaction": "❤️"
 }
 `;
 
-    // Формируем запрос (текст + картинка, если есть)
     let userContent = [];
     if (imageBase64) {
       userContent.push({ type: "image_url", image_url: { url: imageBase64 } });
     }
     userContent.push({ type: "text", text: message });
 
-    // Використовуємо Vision модель!
+    // Використовуємо потужну модель із зором
     const completion = await client.chat.completions.create({
       model: 'llama-3.2-90b-vision-preview', 
       messages: [
@@ -61,12 +75,17 @@ export default async function handler(req, res) {
     });
 
     const raw = completion.choices?.[0]?.message?.content || '{}';
-    let parsed = JSON.parse(raw);
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch(e) { parsed = { speech: raw }; }
 
-    return res.status(200).json({ speech: parsed.speech || '' });
+    // Віддаємо фронтенду і мову, і реакцію
+    return res.status(200).json({ 
+      speech: parsed.speech || '',
+      reaction: parsed.reaction || null
+    });
 
   } catch (err) {
     console.error('Chat error:', err);
-    return res.status(500).json({ speech: 'Капітан на хвилинку відволікся! Спробуйте ще раз.' });
+    return res.status(500).json({ speech: 'Капітан на хвилинку відволікся! Спробуйте ще раз.', reaction: '⚙️' });
   }
 }
