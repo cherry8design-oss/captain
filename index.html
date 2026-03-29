@@ -1,483 +1,323 @@
-<!doctype html>
-<html lang="ru">
+<html lang="uk">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Captain 3D — Unified Chat</title>
-
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/"
-  }
-}
-</script>
-
-<style>
-:root{
-  --radius:12px;
-  --accent-grad: linear-gradient(90deg,#4facfe,#00f2fe);
-  --muted:#6b7280;
-  --term-bg: rgba(18,18,18,0.92);
-  --term-green:#7CFF8A;
-  --soft-shadow: 0 12px 30px rgba(2,6,23,0.08);
-  --btn-shadow: 0 8px 20px rgba(31,111,235,0.12);
-  --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-}
-html,body{height:100%;margin:0;font-family:var(--font);background:linear-gradient(180deg,#eef2f7 0,#fff 100%);color:#111}
-
-/* Root container */
-#captain-root{position:relative;width:100%;height:720px;max-height:85vh;border-radius:var(--radius);overflow:hidden;}
-
-/* 3D container */
-#captain-3d-container{width:100%;height:100%;background:transparent;}
-
-/* Bubble (TTS) */
-#captain-bubble-box{display:none;position:absolute;transform:translate(-50%,-120%);background:linear-gradient(180deg,#fff,#fbfbfb);border:2px solid rgba(20,20,20,0.06);border-radius:18px;padding:12px 16px;box-shadow:0 12px 30px rgba(0,0,0,0.12);color:#111;font-weight:700;font-size:15px;max-width:320px;z-index:9999;pointer-events:none;transition:opacity .18s ease, transform .18s ease;}
-#captain-bubble-box .tail{position:absolute;width:0;height:0;border-left:10px solid transparent;border-right:10px solid transparent;border-top:12px solid rgba(255,255,255,0.98);left:50%;transform:translateX(-50%);bottom:-10px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.08));}
-.bubble-dots span{display:inline-block;width:6px;height:6px;margin:0 2px;border-radius:50%;background:#888;animation:dotPulse 1s infinite linear;}
-@keyframes dotPulse{0%{transform:translateY(0);opacity:.4}50%{transform:translateY(-6px);opacity:1}100%{transform:translateY(0);opacity:.4}}
-
-/* Shell for UI */
-#chat-shell{position:absolute;left:18px;right:18px;bottom:18px;z-index:60;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:10px}
-
-/* Curtain (absolute pinned area) */
-#pinned-curtain{position:absolute;left:50%;transform:translateX(-50%);top:0;z-index:80;pointer-events:auto;width:min(920px,calc(100% - 36px));transition:transform .28s cubic-bezier(.2,.9,.2,1),opacity .18s}
-#pinned-shell{position:relative;border-radius:12px;overflow:visible}
-#pinned-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:12px 12px 0 0;background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.94));box-shadow:0 8px 24px rgba(2,6,23,0.08);cursor:grab}
-#pinned-handle{width:36px;height:6px;background:rgba(0,0,0,0.08);border-radius:4px}
-#pinned-preview{color:var(--muted);font-size:13px;max-width:40vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#pinned-content{position:relative;background:transparent;padding:10px 12px;border-radius:0 0 12px 12px;box-shadow:0 8px 24px rgba(2,6,23,0.06);display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto;-webkit-overflow-scrolling:touch}
-
-/* collapsed/expanded states */
-#pinned-curtain.collapsed #pinned-content{display:none}
-#pinned-curtain.collapsed{transform:translate(-50%,-6px);opacity:0.98}
-#pinned-curtain.expanded{transform:translate(-50%,0);opacity:1}
-
-/* pinned message */
-.pinned-msg{display:inline-block;background:var(--term-bg);color:var(--term-green);padding:10px 14px;border-radius:10px;font-family:ui-monospace,monospace;font-size:13px;box-shadow:0 8px 20px rgba(0,0,0,0.18);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:transform .18s,opacity .18s;cursor:default}
-.pinned-msg.enter{transform:translateY(-8px) scale(.995);opacity:0}
-.pinned-msg.enter.active{transform:translateY(0) scale(1);opacity:1}
-.pinned-msg:hover{transform:translateY(-2px) scale(1.01);box-shadow:0 12px 28px rgba(0,0,0,0.22)}
-
-/* Input panel */
-#input-panel{pointer-events:auto;width:min(920px,calc(100% - 36px));border-radius:12px;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,0.96),rgba(255,255,255,0.94));box-shadow:var(--soft-shadow);display:flex;flex-direction:column;gap:8px;transition:margin-top .18s ease}
-.input-row{display:flex;gap:8px;align-items:center}
-#captain-input-field{flex:1;padding:12px 14px;border-radius:10px;border:1px solid #e6e9ef;font-size:15px;outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.6)}
-#captain-input-field:focus{box-shadow:0 8px 24px rgba(31,111,235,0.12);border-color:#9ecbff}
-
-/* Buttons */
-.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:700;color:#fff;box-shadow:var(--btn-shadow);transition:transform .12s ease,box-shadow .12s ease}
-.btn:active{transform:translateY(1px)}
-.btn:focus{outline:3px solid rgba(31,111,235,0.14)}
-.btn-send{background:var(--accent-grad);min-width:84px}
-.btn-mic{background:linear-gradient(90deg,#ff8a00,#ff5a5f);min-width:56px}
-.btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(0,0,0,0.06);padding:8px 10px;border-radius:8px}
-.controls-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.controls-left{display:flex;gap:8px;align-items:center}
-.range{width:140px}
-.microcopy{font-size:12px;color:var(--muted)}
-
-/* Responsive */
-@media (max-width:720px){
-  #pinned-curtain,#input-panel{width:calc(100% - 24px)}
-  .pinned-msg{max-width:78vw;font-size:13px}
-  #pinned-preview{max-width:36vw}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cherry Design | Premium 3D Canvas & AI Expert</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        #cherry-app-wrapper { --cherry-main: #d90429; --text-dark: #111827; --text-muted: #6b7280; --panel-bg: rgba(255, 255, 255, 0.85); --card-bg: rgba(255, 255, 255, 0.9); --btn-green: #10b981; position: relative; width: 100vw; margin-left: calc(-50vw + 50%); height: calc(100vh - 80px); min-height: 600px; overflow: hidden; background: radial-gradient(circle at center, #ffffff 0%, #e2e8f0 100%); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+        #cherry-app-wrapper * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        #viewport-3d { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: grab; z-index: 1; touch-action: none; } #viewport-3d:active { cursor: grabbing; }
+        #cherry-loader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); z-index: 99; display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 0.3s ease; }
+        .spinner { width: 40px; height: 40px; border: 4px solid rgba(217, 4, 41, 0.2); border-top-color: var(--cherry-main); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 100% { transform: rotate(360deg); } }
+        .loader-text { font-weight: 700; color: var(--cherry-main); font-size: 0.9rem; letter-spacing: 0.05em; }
+        #captain-container { position: absolute; bottom: 0; right: 2%; width: 340px; height: 420px; z-index: 15; pointer-events: none; } #captain-3d-view { width: 100%; height: 100%; pointer-events: none; }
+        #captain-bubble-box { display: none; position: absolute; transform: translate(-50%, -100%); background: linear-gradient(180deg,#fff,#fbfbfb); border: 2px solid rgba(20,20,20,0.06); border-radius: 18px; padding: 12px 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); color: #111; font-weight: 700; font-size: 14px; max-width: 280px; text-align: center; z-index: 9999; transition: opacity .18s ease; }
+        #captain-bubble-box .tail { position: absolute; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 12px solid rgba(255,255,255,0.98); left: 50%; transform: translateX(-50%); bottom: -10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); }
+        .bubble-dots { display: inline-block; margin-left: 8px; opacity: 0.7; font-weight: 700; visibility: hidden; }
+        #captain-ui-wrapper { position: absolute; right: 24px; bottom: 180px; z-index: 20; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; pointer-events: auto; }
+        #captain-toggle-btn { background: var(--panel-bg); backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,0.05); padding: 10px 20px; border-radius: 30px; font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 8px; transition: all 0.2s; } #captain-toggle-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        #captain-chat-panel { background: var(--panel-bg); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); width: 320px; padding: 16px; display: none; flex-direction: column; gap: 12px; }
+        #captain-chat-history { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; } #captain-chat-history::-webkit-scrollbar { width: 4px; } #captain-chat-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .chat-item { padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; line-height: 1.4; max-width: 90%; } .chat-user { align-self: flex-end; background: #e0e7ff; color: #3730a3; font-weight: 600; } .chat-bot { align-self: flex-start; background: #f1f5f9; color: var(--text-dark); }
+        .chat-controls { display: flex; gap: 6px; } .chat-controls input { flex: 1; padding: 10px 14px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.1); outline: none; font-family: 'Inter', sans-serif; font-size: 0.85rem; } .chat-controls button { background: #1f6feb; color: white; border: none; border-radius: 12px; padding: 0 14px; font-weight: 700; cursor: pointer; transition: 0.2s; } .chat-controls button.btn-mic { background: linear-gradient(135deg, #ff5a5f, #ff8a00); font-size: 1.1rem; }
+        .hint-360 { position: absolute; top: 24px; right: 24px; background: rgba(255,255,255,0.7); padding: 10px 20px; border-radius: 40px; font-size: 0.85rem; font-weight: 700; pointer-events: none; z-index: 2; box-shadow: 0 8px 32px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 8px; backdrop-filter: blur(12px); animation: pulseHint 3s infinite; } @keyframes pulseHint { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
+        .btn-ar { position: absolute; top: 24px; right: 200px; z-index: 5; background: rgba(255,255,255,0.85); padding: 10px 20px; border-radius: 40px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); text-decoration: none; border: 1px solid rgba(0,0,0,0.1); }
+        #ARButton { top: 24px !important; right: 200px !important; left: auto !important; bottom: auto !important; background: rgba(255, 255, 255, 0.85) !important; color: var(--text-dark) !important; border: 1px solid rgba(0,0,0,0.1) !important; padding: 10px 20px !important; width: auto !important; border-radius: 40px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.08) !important; }
+        .ui-panel { position: absolute; top: 20px; left: 20px; width: 420px; background: var(--panel-bg); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.6); border-radius: 32px; box-shadow: 0 30px 60px -15px rgba(0,0,0,0.15); z-index: 10; max-height: calc(100% - 40px); display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .ui-header { padding: 24px 28px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; cursor: pointer; } .brand-logo { font-weight: 800; font-size: 1.4rem; color: var(--cherry-main); display: flex; align-items: center; gap: 8px; }
+        .ui-panel-scroll { overflow-y: auto; overflow-x: hidden; padding: 0 28px; flex-grow: 1; display: flex; flex-direction: column; gap: 16px; } .ui-panel-scroll::-webkit-scrollbar { display: none; }
+        .card-block { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.8); border-radius: 24px; padding: 20px; transition: transform 0.3s ease; }
+        .file-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; border: 2px dashed rgba(217, 4, 41, 0.4); border-radius: 20px; background: rgba(217, 4, 41, 0.02); cursor: pointer; position: relative; } .file-upload input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2; } .upload-icon { font-size: 2.2rem; margin-bottom: 8px; color: var(--text-dark); opacity: 0.6; } .upload-title { font-size: 0.95rem; font-weight: 700; color: var(--text-dark); }
+        .image-preview-container { display: none; width: 100%; align-items: center; gap: 16px; pointer-events: none; } .image-preview-container img { width: 64px; height: 64px; object-fit: cover; border-radius: 16px; border: 2px solid white; } .preview-info { display: flex; flex-direction: column; } .preview-info .file-name { font-size: 0.9rem; font-weight: 700; display: block; margin-bottom: 4px; } .preview-info .change-text { font-size: 0.8rem; color: var(--cherry-main); font-weight: 700; text-decoration: underline; pointer-events: auto; cursor: pointer; }
+        .size-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .size-tile { position: relative; display: flex; flex-direction: column; align-items: center; padding: 14px 10px; background: rgba(0,0,0,0.02); border-radius: 16px; border: 2px solid transparent; cursor: pointer; } .size-tile input { display: none; } .size-tile .st-size { font-weight: 800; font-size: 0.95rem; } .size-tile .st-price { font-weight: 600; font-size: 0.75rem; color: var(--text-muted); } .size-tile.active { border-color: var(--cherry-main); background: #ffffff; box-shadow: 0 8px 24px rgba(217, 4, 41, 0.15); transform: scale(1.02); } .badge-hit { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
+        .checkout-block { position: sticky; bottom: -28px; background: var(--panel-bg); margin: 10px -28px -28px; padding: 20px 28px 28px; border-top: 1px solid rgba(0,0,0,0.05); backdrop-filter: blur(24px); z-index: 20; } .price-display { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.05); } .p-label { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); } .p-value { font-size: 2.2rem; font-weight: 800; } .input-group input { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 10px; font-family: 'Inter', sans-serif; outline: none; } .btn-submit { width: 100%; background: var(--btn-green); color: white; border: none; padding: 18px; border-radius: 18px; font-size: 1.1rem; font-weight: 800; cursor: pointer; display: flex; justify-content: center; gap: 10px; } .trust-badge { text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 12px; font-weight: 600; }
+        #cherry-toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; } .cherry-toast { background: rgba(255,255,255,0.95); border-left: 4px solid var(--cherry-main); padding: 16px 24px; border-radius: 12px; font-weight: 600; transform: translateX(120%); transition: 0.4s; display: flex; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); } .cherry-toast.show { transform: translateX(0); }
+        @media (max-width: 768px) { .btn-ar { top: 16px; left: 16px; right: auto; padding: 8px 16px; font-size: 0.75rem; } #ARButton { top: 16px !important; left: 16px !important; right: auto !important; } .hint-360 { top: 16px; right: 16px; padding: 8px 14px; font-size: 0.75rem;} #captain-container { width: 180px; height: 25vh; bottom: 80px; right: 0; } #captain-ui-wrapper { top: 70px; right: 10px; bottom: auto; } #captain-chat-panel { width: 280px; } .ui-panel { width: 100%; top: auto; bottom: 0; left: 0; border-radius: 36px 36px 0 0; height: 50dvh; } .ui-panel.expanded { height: 85dvh; } .mobile-handle { display: block; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 40px; height: 5px; background: rgba(0,0,0,0.2); border-radius: 5px; } .checkout-block { margin: 10px -20px 0; padding: 16px 20px 20px; bottom: 0; } }
+    </style>
 </head>
 <body>
-<div id="captain-root" aria-live="polite">
-  <div id="captain-3d-container" aria-hidden="false"></div>
 
-  <div id="captain-bubble-box" role="status" aria-live="polite">
-    <div id="captain-bubble-text">...</div>
-    <span class="bubble-dots" id="bubble-dots" aria-hidden="true"><span></span><span></span><span></span></span>
-    <div class="tail"></div>
-  </div>
+    <div id="cherry-app-wrapper">
+        <div id="cherry-loader"><div class="spinner"></div><div class="loader-text">Створюємо 3D середовище...</div></div>
+        <div id="viewport-3d"></div>
+        <div id="captain-container"><div id="captain-3d-view"></div><div id="captain-bubble-box"><span id="captain-bubble-text">...</span><span class="bubble-dots" id="bubble-dots">●●●</span><div class="tail"></div></div></div>
+        <div id="captain-ui-wrapper">
+            <div id="captain-toggle-btn">💬 Чат з Капітаном</div>
+            <div id="captain-chat-panel"><div id="captain-chat-history"></div><div class="chat-controls"><input type="text" id="ai-input" placeholder="Запитайте щось..."><button id="ai-send-btn">➤</button><button id="ai-mic-btn" class="btn-mic">🎤</button></div></div>
+        </div>
+        <a id="mainArButton" class="btn-ar" style="display: none;"><span class="ar-icon">👁️</span> <span>В кімнаті (AR)</span></a>
+        <div class="hint-360"><span>✨</span> Покрутіть картину</div>
+        
+        <div class="ui-panel" id="uiPanel">
+            <div class="ui-header" id="uiDragHandle"><div class="mobile-handle"></div><div class="brand-logo">🍒 Cherry Design</div></div>
+            <div class="ui-panel-scroll">
+                <div class="card-block file-upload" id="uploadDropzone">
+                    <div class="upload-content" id="uploadContent"><div class="upload-icon">📷</div><span class="upload-title">Завантажити фотографію</span></div>
+                    <div class="image-preview-container" id="imagePreviewContainer"><img id="previewImage" src=""><div class="preview-info"><span class="file-name" id="fileName">photo.jpg</span><span class="change-text" id="changePhotoBtn">Замінити фото</span></div></div>
+                    <input type="file" id="imageInput" accept="image/png, image/jpeg, image/webp">
+                </div>
+                <div class="card-block" style="border: none; box-shadow: none; background: transparent; padding: 0 10px;"><div class="size-options" id="sizeOptionsContainer"></div></div>
+                <div class="checkout-block">
+                    <div class="price-display"><span class="p-label">Разом до сплати:</span><span class="p-value"><span id="priceValue">0</span> ₴</span></div>
+                    <div class="input-group"><input type="text" id="customerName" placeholder="Ім'я"></div>
+                    <div class="input-group"><input type="tel" id="customerPhone" placeholder="Телефон"></div>
+                    <button class="btn-submit" id="orderButton">🚀 Замовити друк</button>
+                    <div class="trust-badge">🛡️ Оплата після огляду (без передплати)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="cherry-toast-container"></div>
 
-  <div id="chat-shell" aria-hidden="false">
-    <!-- Curtain (pinned messages) -->
-    <div id="pinned-curtain" class="collapsed" role="region" aria-label="Pinned messages curtain">
-      <div id="pinned-shell">
-        <div id="pinned-header">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div id="pinned-handle"></div>
-            <strong style="font-size:14px">Капитан</strong>
-            <div id="pinned-preview" class="microcopy">(нет сообщений)</div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button id="pinned-toggle-btn" aria-expanded="false" title="Свернуть/развернуть" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);background:#fff;cursor:pointer">▲</button>
-          </div>
-        </div>
-        <div id="pinned-content"></div>
-      </div>
-    </div>
+    <script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import { ARButton } from 'three/addons/webxr/ARButton.js';
+        import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-    <!-- Input panel -->
-    <div id="input-panel" role="region" aria-label="Input panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div id="drag-handle" style="width:36px;height:6px;background:rgba(0,0,0,0.08);border-radius:4px"></div>
-          <strong style="font-size:15px">Капитан</strong>
-          <div id="captain-last-preview" class="microcopy">(нет сообщений)</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <label class="microcopy" style="margin-right:6px">Voice</label>
-          <select id="voice-select" aria-label="Select voice" style="min-width:160px"></select>
-        </div>
-      </div>
+        const EXACT_PRICES = { "20x20": 249, "30x20": 329, "20x30": 329, "30x30": 399, "40x30": 479, "30x40": 479, "60x20": 499, "20x60": 499, "50x40": 599, "40x50": 599, "50x50": 649, "60x40": 699, "40x60": 699, "90x30": 799, "30x90": 799, "70x50": 899, "50x70": 899, "80x60": 1199, "60x80": 1199 };
 
-      <div class="input-row">
-        <input id="captain-input-field" placeholder="Напишите сообщение..." aria-label="Message input" />
-        <button id="captain-send-btn" class="btn btn-send" aria-label="Send message">Send</button>
-        <button id="captain-mic-btn" class="btn btn-mic" aria-label="Start voice input">🎤</button>
-        <button id="captain-undo-btn" class="btn-ghost" aria-label="Undo last message">Undo</button>
-        <button id="captain-clear-btn" class="btn-ghost" aria-label="Clear pinned messages">Clear</button>
-      </div>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('cherry-toast-container'); const toast = document.createElement('div'); toast.className = `cherry-toast ${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${message}</span>`; container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show')); setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+        }
 
-      <div class="controls-row">
-        <div class="controls-left">
-          <label class="microcopy">Rate</label>
-          <input id="captain-rate" class="range" type="range" min="0.6" max="1.6" step="0.05" value="1" aria-label="Speech rate" />
-          <label class="microcopy">Vol</label>
-          <input id="captain-volume" class="range" type="range" min="0" max="1" step="0.05" value="1" aria-label="Speech volume" />
-        </div>
-        <div class="microcopy">Tip: press Enter to send. Hover elements for quick help.</div>
-      </div>
-    </div>
-  </div>
-</div>
+        const clock = new THREE.Clock(); const VERCEL_API = 'https://project-6phnz.vercel.app/api/chat';
+        let scene, camera, renderer, controls, particleSystem; let currentCanvasGroup = null, currentTexture = null;
+        let currentWidthCm = 40, currentHeightCm = 30;
+        let hitTestSource = null, hitTestSourceRequested = false, reticle, xrController;
+        let capScene, capCamera, capRenderer, capMixer, capModel, capBones = {};
+        let isTalking = false; let mousePos = { x: 0, y: 0 };
+        
+        let currentImageBase64 = null;
+        let hasLookedAtBack = false;
 
-<script type="module">
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        const container = document.getElementById('viewport-3d'); const capContainerView = document.getElementById('captain-3d-view');
+        const bubble = document.getElementById('captain-bubble-box'); const bubbleText = document.getElementById('captain-bubble-text'); const bubbleDots = document.getElementById('bubble-dots');
+        const chatHistory = document.getElementById('captain-chat-history'); const loader = document.getElementById('cherry-loader'); const uiPanel = document.getElementById('uiPanel');
+        const mainArButton = document.getElementById('mainArButton');
+        const texLoader = new THREE.TextureLoader(); texLoader.setCrossOrigin('anonymous'); const woodLoader = new THREE.TextureLoader(); woodLoader.setCrossOrigin('anonymous');
+        
+        initAll();
 
-/* CONFIG */
-const CONFIG = {
-  api: 'https://project-6phnz.vercel.app/api/chat',
-  errorEndpoint: 'https://project-6phnz.vercel.app/api/log',
-  modelUrl: 'https://cherrydesign.shop/wp-content/uploads/models/us5.glb',
-  animUrl: 'https://cherrydesign.shop/wp-content/uploads/models/3_default.glb',
-  dracoBase: 'https://www.gstatic.com/draco/versioned/decoders/1.5.6/',
-  bones: { head: 'Head', jaw: 'JawRoot' },
-  fetchTimeoutMs: 12000,
-  fetchRetries: 2,
-  maxSpeechLength: 1400,
-  bubbleThrottleMs: 40,
-  modelScale: 0.75,
-  bubbleOffsetX: 60,
-  bubbleOffsetY: -30,
-  shadow: { baseScaleFactor: 0.9, minOpacity: 0.12, maxOpacity: 0.6 }
-};
+        function initAll() {
+            initMainScene(); initCaptainScene(); loadDefaultTexture(); setupChatUI(); setupInteractiveEvents();
+            document.getElementById('changePhotoBtn').addEventListener('click', () => { document.getElementById('imageInput').click(); });
+            setTimeout(() => { resizeCanvas(); }, 500); window.addEventListener('resize', resizeCanvas);
+            document.getElementById('imageInput').addEventListener('change', handleImageUpload);
+            document.getElementById('uiDragHandle').addEventListener('click', () => { if (window.innerWidth <= 768) uiPanel.classList.toggle('expanded'); });
+            window.addEventListener('mousemove', e => { mousePos.x = (e.clientX / window.innerWidth) * 2 - 1; mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1; });
+        }
 
-/* UI refs */
-const containerEl = document.getElementById('captain-3d-container');
-const pinnedCurtain = document.getElementById('pinned-curtain');
-const pinnedContent = document.getElementById('pinned-content');
-const pinnedPreview = document.getElementById('pinned-preview');
-const pinnedToggle = document.getElementById('pinned-toggle-btn');
-const pinnedHandle = document.getElementById('pinned-handle');
-const inputPanel = document.getElementById('input-panel');
-const pinnedHeader = document.getElementById('pinned-header');
+        function initMainScene() {
+            scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.1, 100); camera.position.set(1, 0.2, 2);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setSize(container.clientWidth || 100, container.clientHeight || 100); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.xr.enabled = true; container.appendChild(renderer.domElement);
+            
+            controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05; controls.maxPolarAngle = Math.PI / 2 + 0.1; controls.autoRotate = true; controls.autoRotateSpeed = 0.5; controls.enablePan = false; 
+            
+            const pmremGenerator = new THREE.PMREMGenerator(renderer);
+            scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+            
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.4)); 
+            
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1.2); mainLight.position.set(2, 5, 4); mainLight.castShadow = true; mainLight.shadow.mapSize.width = 2048; mainLight.shadow.mapSize.height = 2048; 
+            mainLight.shadow.camera.top = 2; mainLight.shadow.camera.bottom = -2; mainLight.shadow.camera.left = -2; mainLight.shadow.camera.right = 2; scene.add(mainLight);
 
-const inputEl = document.getElementById('captain-input-field');
-const sendBtn = document.getElementById('captain-send-btn');
-const micBtn = document.getElementById('captain-mic-btn');
-const undoBtn = document.getElementById('captain-undo-btn');
-const clearBtn = document.getElementById('captain-clear-btn');
-const rateEl = document.getElementById('captain-rate');
-const volumeEl = document.getElementById('captain-volume');
-const voiceSelect = document.getElementById('voice-select');
-const bubbleEl = document.getElementById('captain-bubble-box');
-const bubbleTextEl = document.getElementById('captain-bubble-text');
-const bubbleDotsEl = document.getElementById('bubble-dots');
-const lastPreview = document.getElementById('captain-last-preview');
+            const floorShadow = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.ShadowMaterial({ opacity: 0.05 })); 
+            floorShadow.rotation.x = -Math.PI / 2;
+            floorShadow.position.y = -0.5; 
+            floorShadow.receiveShadow = true; 
+            floorShadow.name = 'floorShadow';
+            scene.add(floorShadow);
 
-let scene, camera, renderer, clock = new THREE.Clock();
-let model = null, bones = {}, mixer = null;
-let rafId = null;
-window.mouseObserver = { x:0, y:0 };
-let isThinking = false, isTalking = false;
-let currentUtterance = null;
-let requestInProgress = false;
-let activeRec = null;
+            createMagicDust();
+            initARHitTest(); setupARButton();
 
-/* Global API + queue */
-window.captain = window.captain || {};
-window.captain._q = window.captain._q || [];
+            renderer.setAnimationLoop((timestamp, frame) => { 
+                const delta = clock.getDelta(); const t = clock.getElapsedTime(); 
+                if (!renderer.xr.isPresenting) { controls.update(); } 
+                else if (frame) {
+                    const session = renderer.xr.getSession(); const referenceSpace = renderer.xr.getReferenceSpace();
+                    if (hitTestSourceRequested === false) { session.requestReferenceSpace('viewer').then((refSpaceViewer) => { session.requestHitTestSource({ space: refSpaceViewer }).then((source) => { hitTestSource = source; }); }); session.addEventListener('end', () => { hitTestSourceRequested = false; hitTestSource = null; }); hitTestSourceRequested = true; }
+                    if (hitTestSource) { const hitTestResults = frame.getHitTestResults(hitTestSource); if (hitTestResults.length > 0) { const pose = hitTestResults[0].getPose(referenceSpace); reticle.visible = true; reticle.matrix.fromArray(pose.transform.matrix); } else { reticle.visible = false; } }
+                }
+                if(particleSystem) particleSystem.rotation.y += 0.0005; renderer.render(scene, camera); 
+                if (capModel && capMixer && !renderer.xr.isPresenting) { capMixer.update(delta); capModel.position.y = capModel.userData.baseY + (0.002 * Math.sin(t * 0.8)); if (capBones.head) { capBones.head.rotation.y = THREE.MathUtils.lerp(capBones.head.rotation.y, mousePos.x * 0.45, 0.1); capBones.head.rotation.x = THREE.MathUtils.lerp(capBones.head.rotation.x, mousePos.y * -0.12, 0.1); } if (capBones.jaw) capBones.jaw.rotation.x = isTalking ? Math.abs(Math.sin(t * 15)) * 0.28 : THREE.MathUtils.lerp(capBones.jaw.rotation.x, 0, 0.1); updateCaptainBubble(); capRenderer.render(capScene, capCamera); }
+            });
+        }
 
-/* Internal stack for undo */
-const pinnedStack = [];
+        function setupInteractiveEvents() {
+            controls.addEventListener('end', () => {
+                if (camera.position.z < 0 && !hasLookedAtBack && currentTexture) {
+                    hasLookedAtBack = true;
+                    setTimeout(() => { sendToVercel("Клієнт щойно покрутив картину і подивився на підрамник ззаду. Похвали якість нашої дерев'яної збірки та натяжки."); }, 1000);
+                }
+            });
+            document.addEventListener("visibilitychange", () => {
+                if (document.visibilityState === "visible" && currentImageBase64) {
+                    setTimeout(() => { sendToVercel("Клієнт щойно повернувся на сайт після паузи. Тепло привітай з поверненням і м'яко запропонуй оформити замовлення прямо зараз."); }, 1500);
+                }
+            });
+        }
 
-/* Pinned curtain logic */
-(function(){
-  const HEADER_H = pinnedHeader.getBoundingClientRect().height || 56;
-  let curtainHeight = Math.min(window.innerHeight * 0.36, 420);
-  let collapsed = true;
-  pinnedCurtain.classList.add('collapsed');
-  pinnedCurtain.classList.remove('expanded');
-  pinnedToggle.textContent = '▲';
-  pinnedToggle.setAttribute('aria-expanded','false');
+        function buildCanvas3D(w, h, texture) {
+            if (currentCanvasGroup) scene.remove(currentCanvasGroup); currentCanvasGroup = new THREE.Group(); 
+            const FRAME_THICKNESS = 0.015; const WOOD_WIDTH = 0.030; const BACK_PRINT = 0.005; const BACK_WHITE = 0.015; 
+            const WRAP = FRAME_THICKNESS + BACK_PRINT; const totalW = w + 2 * WRAP; const totalH = h + 2 * WRAP;
+            const uW = w / totalW; const uH = h / totalH; const uWrapX = WRAP / totalW; const uWrapY = WRAP / totalH;
+            const uThickX = FRAME_THICKNESS / totalW; const uThickY = FRAME_THICKNESS / totalH; const uBackX = BACK_PRINT / totalW; const uBackY = BACK_PRINT / totalH;
+            const imgAspect = texture.image.width / texture.image.height; const canvasAspect = totalW / totalH;
+            let scaleX = 1, scaleY = 1, offsetX = 0, offsetY = 0;
+            if (imgAspect > canvasAspect) { scaleX = canvasAspect / imgAspect; offsetX = (1 - scaleX) / 2; } else { scaleY = imgAspect / canvasAspect; offsetY = (1 - scaleY) / 2; }
+            function createCroppedTex(tex, rw, rh, ox, oy) { const t = tex.clone(); t.repeat.set(rw * scaleX, rh * scaleY); t.offset.set(offsetX + ox * scaleX, offsetY + oy * scaleY); t.needsUpdate = true; return t; }
 
-  function applyCollapsedState(){
-    pinnedCurtain.classList.add('collapsed'); pinnedCurtain.classList.remove('expanded');
-    pinnedToggle.textContent = '▲'; pinnedToggle.setAttribute('aria-expanded','false');
-    if(inputPanel) inputPanel.style.marginTop = (HEADER_H + 12) + 'px';
-  }
-  function applyExpandedState(){
-    pinnedCurtain.classList.remove('collapsed'); pinnedCurtain.classList.add('expanded');
-    pinnedToggle.textContent = '▼'; pinnedToggle.setAttribute('aria-expanded','true');
-    if(inputPanel) inputPanel.style.marginTop = (curtainHeight + 18) + 'px';
-  }
-  applyCollapsedState();
+            const frontTex = createCroppedTex(texture, uW, uH, uWrapX, uWrapY); const rightTex = createCroppedTex(texture, uThickX, uH, uWrapX + uW, uWrapY); const leftTex = createCroppedTex(texture, uThickX, uH, 0, uWrapY); const topTex = createCroppedTex(texture, uW, uThickY, uWrapX, uWrapY + uH); const bottomTex = createCroppedTex(texture, uW, uThickY, uWrapX, 0); const backRightTex = createCroppedTex(texture, uBackX, uH, uWrapX + uW + uThickX, uWrapY); const backLeftTex = createCroppedTex(texture, uBackX, uH, uWrapX - uThickX - uBackX, uWrapY); const backTopTex = createCroppedTex(texture, uW, uBackY, uWrapX, uWrapY + uH + uThickY); const backBottomTex = createCroppedTex(texture, uW, uBackY, uWrapX, uWrapY - uThickY - uBackY);
+            const canvasNormal = texLoader.load('https://cherrydesign.shop/wp-content/uploads/canvas_normal.jpg'); canvasNormal.wrapS = canvasNormal.wrapT = THREE.RepeatWrapping; const WEAVE = 25; 
+            function cloneNorm(tex, rw, rh, ox, oy) { const t = tex.clone(); t.repeat.set(rw, rh); t.offset.set(ox, oy); t.needsUpdate = true; return t; }
+            const frontNormal = cloneNorm(canvasNormal, w * WEAVE, h * WEAVE, 0, 0); const sideYNormal = cloneNorm(canvasNormal, FRAME_THICKNESS * WEAVE, h * WEAVE, 0, 0); const sideXNormal = cloneNorm(canvasNormal, w * WEAVE, FRAME_THICKNESS * WEAVE, 0, 0); const backYNormal = cloneNorm(canvasNormal, BACK_PRINT * WEAVE, h * WEAVE, 0, 0); const backXNormal = cloneNorm(canvasNormal, w * WEAVE, BACK_PRINT * WEAVE, 0, 0); const whiteYNormal = cloneNorm(canvasNormal, BACK_WHITE * WEAVE, h * WEAVE, 0, 0); const whiteXNormal = cloneNorm(canvasNormal, w * WEAVE, BACK_WHITE * WEAVE, 0, 0);
 
-  pinnedToggle.addEventListener('click', (e)=>{ e.stopPropagation(); collapsed = !collapsed; if(collapsed) applyCollapsedState(); else applyExpandedState(); });
+            const nDepth = new THREE.Vector2(1.2, 1.2); const cProps = { color: 0xffffff, roughness: 0.85, metalness: 0.05, side: THREE.FrontSide }; 
+            const matFront = new THREE.MeshStandardMaterial({ map: frontTex, normalMap: frontNormal, normalScale: nDepth, ...cProps }); const matRight = new THREE.MeshStandardMaterial({ map: rightTex, normalMap: sideYNormal, normalScale: nDepth, ...cProps }); const matLeft = new THREE.MeshStandardMaterial({ map: leftTex, normalMap: sideYNormal, normalScale: nDepth, ...cProps }); const matTop = new THREE.MeshStandardMaterial({ map: topTex, normalMap: sideXNormal, normalScale: nDepth, ...cProps }); const matBottom = new THREE.MeshStandardMaterial({ map: bottomTex, normalMap: sideXNormal, normalScale: nDepth, ...cProps });
+            
+            const canvasGeo = new RoundedBoxGeometry(w, h, FRAME_THICKNESS, 4, 0.002); const canvasMesh = new THREE.Mesh(canvasGeo, [matRight, matLeft, matTop, matBottom, matFront, new THREE.MeshBasicMaterial({opacity:0, transparent:true})]); canvasMesh.position.z = -FRAME_THICKNESS / 2; canvasMesh.castShadow = true; currentCanvasGroup.add(canvasMesh);
 
-  pinnedHeader.addEventListener('click', (e)=>{ if(e.target === pinnedToggle) return; collapsed = !collapsed; if(collapsed) applyCollapsedState(); else applyExpandedState(); });
+            const rawColor = 0xfdfdfd; const innerPlane = new THREE.Mesh(new THREE.PlaneGeometry(w - 0.002, h - 0.002), new THREE.MeshStandardMaterial({ color: rawColor, roughness: 1.0, normalMap: frontNormal, normalScale: new THREE.Vector2(1.5, 1.5), side: THREE.BackSide })); innerPlane.position.z = -0.002; currentCanvasGroup.add(innerPlane);
+            const zPrintFold = -FRAME_THICKNESS; const zWhiteFold = -FRAME_THICKNESS - 0.0002; const zStaples = -FRAME_THICKNESS - 0.0006;
+            const mBR = new THREE.MeshStandardMaterial({ map: backRightTex, normalMap: backYNormal, normalScale: nDepth, ...cProps }); const mBL = new THREE.MeshStandardMaterial({ map: backLeftTex, normalMap: backYNormal, normalScale: nDepth, ...cProps }); const mBT = new THREE.MeshStandardMaterial({ map: backTopTex, normalMap: backXNormal, normalScale: nDepth, ...cProps }); const mBB = new THREE.MeshStandardMaterial({ map: backBottomTex, normalMap: backXNormal, normalScale: nDepth, ...cProps });
+            const pTop = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_PRINT), mBT); pTop.position.set(0, h/2 - BACK_PRINT/2, zPrintFold); pTop.rotation.x = Math.PI; currentCanvasGroup.add(pTop); const pBot = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_PRINT), mBB); pBot.position.set(0, -h/2 + BACK_PRINT/2, zPrintFold); pBot.rotation.x = Math.PI; currentCanvasGroup.add(pBot); const pRig = new THREE.Mesh(new THREE.PlaneGeometry(BACK_PRINT, h - 2*BACK_PRINT), mBR); pRig.position.set(w/2 - BACK_PRINT/2, 0, zPrintFold); pRig.rotation.y = Math.PI; currentCanvasGroup.add(pRig); const pLef = new THREE.Mesh(new THREE.PlaneGeometry(BACK_PRINT, h - 2*BACK_PRINT), mBL); pLef.position.set(-w/2 + BACK_PRINT/2, 0, zPrintFold); pLef.rotation.y = Math.PI; currentCanvasGroup.add(pLef);
 
-  let dragging = false, startY = 0, startH = 0;
-  function startDrag(e){ dragging = true; startY = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY; startH = curtainHeight; pinnedCurtain.style.transition = 'none'; document.body.style.userSelect = 'none'; }
-  function onDrag(e){ if(!dragging) return; const y = (e.touches && e.touches[0]) ? e.touches[0].clientY : e.clientY; const dy = startY - y; const rootH = window.innerHeight; const maxH = Math.min(rootH * 0.8, 720); const minH = HEADER_H + 8; let newH = Math.min(Math.max(startH + dy, minH), maxH); curtainHeight = newH; pinnedCurtain.style.height = curtainHeight + 'px'; if(curtainHeight > rootH * 0.28){ collapsed = false; applyExpandedState(); } else { collapsed = true; applyCollapsedState(); } }
-  function endDrag(){ if(!dragging) return; dragging = false; pinnedCurtain.style.transition = ''; document.body.style.userSelect = ''; if(collapsed) applyCollapsedState(); else applyExpandedState(); }
+            const backWhiteProps = { color: rawColor, roughness: 1.0, normalScale: new THREE.Vector2(0.8, 0.8), side: THREE.FrontSide }; const mwT = new THREE.MeshStandardMaterial({ normalMap: whiteXNormal, ...backWhiteProps }); const mwR = new THREE.MeshStandardMaterial({ normalMap: whiteYNormal, ...backWhiteProps });
+            
+            // ВЫПРАВЛЕНО: ТУТ БЫЛА ОПЕЧАТКА `new Mesh` ВМЕСТО `new THREE.Mesh`
+            const wTop = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_WHITE), mwT); wTop.position.set(0, h/2 - BACK_PRINT - BACK_WHITE/2, zWhiteFold); wTop.rotation.y = Math.PI; currentCanvasGroup.add(wTop); 
+            const wBot = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_WHITE), mwT); wBot.position.set(0, -h/2 + BACK_PRINT + BACK_WHITE/2, zWhiteFold); wBot.rotation.y = Math.PI; currentCanvasGroup.add(wBot); 
+            const wRig = new THREE.Mesh(new THREE.PlaneGeometry(BACK_WHITE, h - 2*BACK_PRINT - 2*BACK_WHITE), mwR); wRig.position.set(w/2 - BACK_PRINT - BACK_WHITE/2, 0, zWhiteFold); wRig.rotation.y = Math.PI; currentCanvasGroup.add(wRig); 
+            const wLef = new THREE.Mesh(new THREE.PlaneGeometry(BACK_WHITE, h - 2*BACK_PRINT - 2*BACK_WHITE), mwR); wLef.position.set(-w/2 + BACK_PRINT + BACK_WHITE/2, 0, zWhiteFold); wLef.rotation.y = Math.PI; currentCanvasGroup.add(wLef);
 
-  pinnedHandle.addEventListener('mousedown', startDrag);
-  window.addEventListener('mousemove', onDrag);
-  window.addEventListener('mouseup', endDrag);
-  pinnedHandle.addEventListener('touchstart', startDrag, {passive:true});
-  window.addEventListener('touchmove', onDrag, {passive:true});
-  window.addEventListener('touchend', endDrag);
+            const gap = 0.002; const frameW = w - gap * 2; const frameH = h - gap * 2; const woodAlbedo = woodLoader.load('https://cherrydesign.shop/wp-content/uploads/pine_light_premium.jpg'); const woodNormal = woodLoader.load('https://cherrydesign.shop/wp-content/uploads/pine_light_premium_normal.jpg'); woodAlbedo.wrapS = woodAlbedo.wrapT = woodNormal.wrapS = woodNormal.wrapT = THREE.RepeatWrapping;
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0xffeedd, roughness: 0.85, map: woodAlbedo, normalMap: woodNormal, normalScale: new THREE.Vector2(0.3, 0.3) });
+            function createPlank(length) { const shape = new THREE.Shape(); shape.moveTo(-length / 2, WOOD_WIDTH / 2); shape.lineTo(length / 2, WOOD_WIDTH / 2); shape.lineTo(length / 2 - WOOD_WIDTH, -WOOD_WIDTH / 2); shape.lineTo(-length / 2 + WOOD_WIDTH, -WOOD_WIDTH / 2); shape.lineTo(-length / 2, WOOD_WIDTH / 2); const geo = new THREE.ExtrudeGeometry(shape, { depth: FRAME_THICKNESS - gap * 2, bevelEnabled: true, bevelThickness: 0.0005, bevelSize: 0.0005, bevelSegments: 2 }); geo.center(); const matClone = woodMat.clone(); matClone.map = woodAlbedo.clone(); matClone.normalMap = woodNormal.clone(); matClone.map.repeat.set(length * 20, 4); matClone.normalMap.repeat.set(length * 20, 4); matClone.map.needsUpdate = matClone.normalMap.needsUpdate = true; return new THREE.Mesh(geo, matClone); }
+            const frameGroup = new THREE.Group(); const plT = createPlank(frameW); plT.position.set(0, frameH/2 - WOOD_WIDTH/2, 0); frameGroup.add(plT); const plB = createPlank(frameW); plB.rotation.z = Math.PI; plB.position.set(0, -frameH/2 + WOOD_WIDTH/2, 0); frameGroup.add(plB); const plL = createPlank(frameH); plL.rotation.z = Math.PI/2; plL.position.set(-frameW/2 + WOOD_WIDTH/2, 0, 0); frameGroup.add(plL); const plR = createPlank(frameH); plR.rotation.z = -Math.PI/2; plR.position.set(frameW/2 - WOOD_WIDTH/2, 0, 0); frameGroup.add(plR); frameGroup.position.z = -FRAME_THICKNESS / 2; currentCanvasGroup.add(frameGroup);
 
-  /* Pinned messages API */
-  window.captain.appendPinnedMessage = function(text, opts = {}) {
-    const maxVisible = opts.maxVisible || 3;
-    const tooltip = opts.tooltip || '';
-    const cls = opts.className || 'pinned-msg';
-    const el = document.createElement('div');
-    el.className = cls + ' enter';
-    if(tooltip) el.setAttribute('data-tooltip', tooltip);
-    el.textContent = text;
-    pinnedContent.insertBefore(el, pinnedContent.firstChild);
-    requestAnimationFrame(()=> el.classList.add('active'));
-    pinnedStack.unshift({ text, el });
-    const items = pinnedContent.querySelectorAll('.pinned-msg');
-    if(items.length > maxVisible){ const last = items[items.length - 1]; last.remove(); pinnedStack.pop(); }
-    const first = pinnedContent.querySelector('.pinned-msg');
-    if(first && first.textContent) pinnedPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
-    else pinnedPreview.textContent = '(нет сообщений)';
-    if(collapsed){ pinnedCurtain.classList.remove('collapsed'); pinnedCurtain.classList.add('expanded'); setTimeout(()=> { if(collapsed) applyCollapsedState(); }, 900); }
-    // update bottom preview
-    if(first && first.textContent) lastPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
-    else lastPreview.textContent = '(нет сообщений)';
-    return el;
-  };
+            const stapleGeo = new THREE.BoxGeometry(0.008, 0.0008, 0.001); const stapleMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.2 }); 
+            function addStaple(x, y, isVert) { const s = new THREE.Mesh(stapleGeo, stapleMat); s.position.set(x, y, zStaples - 0.001 - (Math.random()*0.0005)); s.rotation.z = (isVert ? Math.PI/2 : 0) + ((Math.random()-0.5)*0.15); currentCanvasGroup.add(s); }
+            const step = 0.05; const wTY = h/2 - BACK_PRINT - BACK_WHITE/2; const wRX = w/2 - BACK_PRINT - BACK_WHITE/2;
+            for (let px = -w/2 + 0.05; px <= w/2 - 0.05 + 0.001; px += step) { addStaple(px + (Math.random()-0.5)*0.01, wTY, false); addStaple(px + (Math.random()-0.5)*0.01, -wTY, false); }
+            for (let py = -h/2 + 0.05; py <= h/2 - 0.05 + 0.001; py += step) { addStaple(wRX, py + (Math.random()-0.5)*0.01, true); addStaple(-wRX, py + (Math.random()-0.5)*0.01, true); }
+            scene.add(currentCanvasGroup); 
+        }
 
-  window.captain.undoLastPinned = function() {
-    if(pinnedStack.length === 0) return null;
-    const item = pinnedStack.shift();
-    try{ if(item.el && item.el.parentNode) item.el.parentNode.removeChild(item.el); } catch(e){}
-    const first = pinnedContent.querySelector('.pinned-msg');
-    if(first && first.textContent) pinnedPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
-    else pinnedPreview.textContent = '(нет сообщений)';
-    if(first && first.textContent) lastPreview.textContent = first.textContent.length > 80 ? first.textContent.slice(0,77) + '…' : first.textContent;
-    else lastPreview.textContent = '(нет сообщений)';
-    return item.text;
-  };
+        function initARHitTest() {
+            const reticleGeo = new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2); reticle = new THREE.Mesh(reticleGeo, new THREE.MeshBasicMaterial({ color: 0x10b981 }));
+            reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
+            xrController = renderer.xr.getController(0);
+            xrController.addEventListener('select', () => { if (reticle.visible && currentCanvasGroup) { currentCanvasGroup.position.setFromMatrixPosition(reticle.matrix); currentCanvasGroup.quaternion.setFromRotationMatrix(reticle.matrix); currentCanvasGroup.rotateX(Math.PI / 2); currentCanvasGroup.visible = true; }});
+            scene.add(xrController);
+        }
 
-  window.captain.clearPinned = function() { pinnedContent.innerHTML = ''; pinnedStack.length = 0; pinnedPreview.textContent = '(нет сообщений)'; lastPreview.textContent = '(нет сообщений)'; };
+        function setupARButton() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS) { mainArButton.style.display = 'flex'; mainArButton.addEventListener('click', async (e) => { e.preventDefault(); if (!currentCanvasGroup) return; const exporter = new USDZExporter(); const exportGroup = new THREE.Group(); const modelToExport = currentCanvasGroup.clone(); modelToExport.position.set(0,0,0); exportGroup.add(modelToExport); loader.style.display = 'flex'; loader.style.opacity = '1'; try { const arraybuffer = await exporter.parse(exportGroup); const blob = new Blob([arraybuffer], { type: 'model/vnd.usdz+zip' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cherry_canvas.usdz'; a.rel = 'ar'; a.click(); } catch (err) { showToast("Помилка генерації AR", "error"); } finally { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 300); }}); } else {
+                if ('xr' in navigator) { navigator.xr.isSessionSupported('immersive-ar').then((supported) => { if (supported) { const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }); arButton.innerHTML = '<span>👁️</span> В кімнаті (AR)'; arButton.className = 'btn-ar'; mainArButton.parentNode.insertBefore(arButton, mainArButton); renderer.xr.addEventListener('sessionstart', () => { uiPanel.style.display = 'none'; document.querySelector('.hint-360').style.display = 'none'; document.getElementById('captain-ui-wrapper').style.display = 'none'; if (currentCanvasGroup) currentCanvasGroup.visible = false; hitTestSourceRequested = false; hitTestSource = null; }); renderer.xr.addEventListener('sessionend', () => { uiPanel.style.display = 'flex'; document.querySelector('.hint-360').style.display = 'flex'; document.getElementById('captain-ui-wrapper').style.display = 'flex'; if (currentCanvasGroup) { currentCanvasGroup.visible = true; currentCanvasGroup.position.set(0,0,0); currentCanvasGroup.rotation.set(0,0,0); resizeCanvas(); }}); }}); }
+            }
+        }
 
-  // expose open/close
-  window.captain.openCurtain = function(){ collapsed = false; applyExpandedState(); pinnedCurtain.style.height = curtainHeight + 'px'; };
-  window.captain.closeCurtain = function(){ collapsed = true; applyCollapsedState(); pinnedCurtain.style.height = ''; };
+        function initCaptainScene() {
+            capScene = new THREE.Scene(); capCamera = new THREE.PerspectiveCamera(15, capContainerView.clientWidth / capContainerView.clientHeight, 0.1, 100); capCamera.position.set(0, 0.8, 5); capCamera.lookAt(0, 0.8, 0);
+            capScene.add(new THREE.AmbientLight(0xffffff, 1.2)); const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(5, 8, 5); capScene.add(sun);
+            capRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); capRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); capRenderer.setSize(capContainerView.clientWidth || 100, capContainerView.clientHeight || 100); capRenderer.outputColorSpace = THREE.SRGBColorSpace; capContainerView.appendChild(capRenderer.domElement);
+            const draco = new DRACOLoader(); draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/'); const gltfLoader = new GLTFLoader(); gltfLoader.setDRACOLoader(draco);
+            
+            gltfLoader.load('https://cherrydesign.shop/wp-content/uploads/models/new.glb', (gltf) => {
+                capModel = gltf.scene; capModel.scale.setScalar(0.75); const box = new THREE.Box3().setFromObject(capModel); const center = new THREE.Vector3(); box.getCenter(center); capModel.position.x -= center.x; capModel.position.y -= box.min.y; capModel.userData.baseY = capModel.position.y;
+                capModel.traverse(c => { if (c.isBone) { if (c.name.includes('Head')) capBones.head = c; if (c.name.includes('JawRoot')) capBones.jaw = c; }});
+                const shadowCanvas = document.createElement('canvas'); shadowCanvas.width = shadowCanvas.height = 512; const ctx = shadowCanvas.getContext('2d'); const grad = ctx.createRadialGradient(256, 256, 25, 256, 256, 256); grad.addColorStop(0, 'rgba(0,0,0,0.8)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,512,512); const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, opacity: 0.6, depthWrite: false })); shadowMesh.rotation.x = -Math.PI/2; shadowMesh.position.y = 0.001; capScene.add(shadowMesh); capScene.add(capModel);
+                capMixer = new THREE.AnimationMixer(capModel); gltfLoader.load('https://cherrydesign.shop/wp-content/uploads/models/a1.glb', (animGltf) => { capMixer.clipAction(animGltf.animations[0]).play(); loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 300); setTimeout(() => captainSpeak("Привіт! Я експерт Cherry Design. Завантажте фото, і створимо шедевр!"), 1000); });
+            });
+        }
 
-  // initial margin for input panel
-  if(inputPanel) inputPanel.style.marginTop = (HEADER_H + 12) + 'px';
-})();
+        function updateCaptainBubble() { if (bubble.style.display === 'none') return; const target = capBones.head || capModel; const worldPos = new THREE.Vector3(); target.getWorldPosition(worldPos); worldPos.project(capCamera); const rect = capContainerView.getBoundingClientRect(); bubble.style.left = `${(worldPos.x * 0.5 + 0.5) * rect.width}px`; bubble.style.top = `${(worldPos.y * -0.5 + 0.5) * rect.height - 30}px`; }
+        function createMagicDust() { const geo = new THREE.BufferGeometry(); const pos = new Float32Array(1200 * 3); for(let i = 0; i < 3600; i++) pos[i] = (Math.random() - 0.5) * 4; geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const c = document.createElement('canvas'); c.width = 16; c.height = 16; const ctx = c.getContext('2d'); const g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 16, 16); particleSystem = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.02, map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); scene.add(particleSystem); }
 
-/* Flush queued calls */
-(function flushQueue(){ const q = window.captain._q || []; while(q.length){ try{ const fn = q.shift(); if(typeof fn === 'function') fn(); } catch(e){ console.warn('captain queue item failed', e); } } window.captain._q = []; })();
+        function captainSpeak(text, isThinking = false) {
+            if (!window.speechSynthesis) { bubbleText.textContent = text; bubble.style.display='block'; return; }
+            window.speechSynthesis.cancel(); bubbleText.textContent = isThinking ? '...' : text; bubbleDots.style.visibility = isThinking ? 'visible' : 'hidden'; bubble.style.display = 'block'; bubble.style.opacity = '1';
+            if (isThinking) { isTalking = false; return; }
+            
+            const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'uk-UA'; utterance.rate = 1.05; utterance.pitch = 1.1; 
+            const voices = window.speechSynthesis.getVoices(); 
+            const ukVoice = voices.find(v => v.lang === 'uk-UA' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('uk'));
+            if (ukVoice) { utterance.voice = ukVoice; }
+            
+            utterance.onstart = () => { isTalking = true; }; utterance.onend = () => { isTalking = false; setTimeout(() => bubble.style.display = 'none', 2000); }; utterance.onerror = () => { isTalking = false; bubble.style.display = 'none'; }; window.speechSynthesis.speak(utterance);
+        }
 
-/* Helpers */
-function safeText(el, text){ if(!el) return; el.textContent = text; }
-async function logError(payload){ try{ if(!CONFIG.errorEndpoint) return; await fetch(CONFIG.errorEndpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); } catch(e){} }
+        function appendChat(text, type) { const div = document.createElement('div'); div.className = `chat-item ${type === 'user' ? 'chat-user' : 'chat-bot'}`; div.textContent = text; chatHistory.appendChild(div); chatHistory.scrollTop = chatHistory.scrollHeight; }
 
-/* Voices */
-function saveVoicePrefs(){ try{ const prefs = { voiceURI: voiceSelect.value || '', rate: rateEl.value, volume: volumeEl.value }; localStorage.setItem('captain_voice_prefs', JSON.stringify(prefs)); }catch(e){} }
-function loadVoicePrefs(){ try{ const raw = localStorage.getItem('captain_voice_prefs'); return raw ? JSON.parse(raw) : null; }catch(e){ return null; } }
-function populateVoices(){ const voices = window.speechSynthesis.getVoices() || []; voiceSelect.innerHTML = ''; voices.sort((a,b)=> (a.lang||'').localeCompare(b.lang||'') || (a.name||'').localeCompare(b.name||'')); voices.forEach(v=>{ const opt = document.createElement('option'); opt.value = v.voiceURI || v.name; opt.textContent = `${v.name} — ${v.lang}`; voiceSelect.appendChild(opt); }); const prefs = loadVoicePrefs(); if(prefs){ if(prefs.voiceURI){ const found = Array.from(voiceSelect.options).find(o=>o.value===prefs.voiceURI); if(found) voiceSelect.value = prefs.voiceURI; } if(prefs.rate) rateEl.value = prefs.rate; if(prefs.volume) volumeEl.value = prefs.volume; } }
-if('speechSynthesis' in window){ populateVoices(); window.speechSynthesis.onvoiceschanged = populateVoices; }
-voiceSelect.addEventListener('change', saveVoicePrefs);
-rateEl.addEventListener('change', saveVoicePrefs);
-volumeEl.addEventListener('change', saveVoicePrefs);
+        async function sendToVercel(msg) {
+            if (!msg.trim()) return; 
+            if (msg !== "Опиши це фото як маркетолог" && !msg.startsWith("Клієнт щойно")) appendChat(msg, 'user'); 
+            
+            document.getElementById('ai-input').value = ''; captainSpeak('...', true);
+            
+            const payload = { message: msg };
+            if (currentImageBase64) { payload.imageBase64 = currentImageBase64; currentImageBase64 = null; } 
 
-/* Typing indicator */
-function showTypingIndicator(id='typing'){ if(document.getElementById('typing-'+id)) return; const el = document.createElement('div'); el.id = 'typing-'+id; el.className = 'typing-indicator'; el.innerHTML = '<span style="opacity:.95;margin-right:8px;font-size:13px">Капитан печатает</span><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>'; pinnedContent.insertBefore(el, pinnedContent.firstChild); }
-function hideTypingIndicator(id='typing'){ const el = document.getElementById('typing-'+id); if(el) el.remove(); }
+            try { 
+                const res = await fetch(VERCEL_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); 
+                const data = await res.json(); 
+                const reply = data.speech || data.reply || data.text || "Мяу, щось пішло не так."; 
+                appendChat(reply, 'bot'); 
+                captainSpeak(reply); 
+            } catch (err) { 
+                appendChat("Помилка зв'язку з сервером.", 'bot'); 
+                captainSpeak("Вибачте, втрачено зв'язок із сервером."); 
+            }
+        }
 
-/* 3D init (lazy) */
-let initCalled = false;
-async function init3D(){ if(initCalled) return; initCalled = true;
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(40, containerEl.clientWidth / containerEl.clientHeight, 0.1, 1000);
-  camera.position.set(0,1.05,1.9);
-  scene.add(new THREE.AmbientLight(0xffffff,1.2));
-  const sun = new THREE.DirectionalLight(0xffffff,0.9); sun.position.set(5,8,5); sun.castShadow=true; scene.add(sun);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(10,10), new THREE.ShadowMaterial({opacity:0.06})); floor.rotation.x=-Math.PI/2; floor.receiveShadow=true; scene.add(floor);
+        function setupChatUI() { const panel = document.getElementById('captain-chat-panel'); const input = document.getElementById('ai-input'); const sendBtn = document.getElementById('ai-send-btn'); const micBtn = document.getElementById('ai-mic-btn'); document.getElementById('captain-toggle-btn').addEventListener('click', () => { panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex'; }); sendBtn.addEventListener('click', () => sendToVercel(input.value)); input.addEventListener('keydown', e => { if(e.key === 'Enter') sendToVercel(input.value); }); micBtn.addEventListener('click', () => { const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRec) return; const rec = new SpeechRec(); rec.lang = 'uk-UA'; micBtn.style.opacity = '0.5'; rec.onresult = (ev) => { input.value = ev.results[0][0].transcript; sendToVercel(input.value); }; rec.onend = () => { micBtn.style.opacity = '1'; }; rec.start(); }); }
 
-  renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
-  renderer.shadowMap.enabled = true;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.9;
-  if('outputColorSpace' in renderer && THREE.SRGBColorSpace) renderer.outputColorSpace = THREE.SRGBColorSpace;
-  else if('outputEncoding' in renderer && THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
-  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, isMobile?1.2:2));
-  renderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
-  containerEl.appendChild(renderer.domElement);
+        async function handleImageUpload(e) {
+            const file = e.target.files[0]; if (!file) return;
+            document.getElementById('uploadContent').style.display = 'none'; document.getElementById('imagePreviewContainer').style.display = 'flex'; document.getElementById('fileName').textContent = file.name;
+            const img = new Image();
+            img.onload = () => {
+                document.getElementById('previewImage').src = img.src; 
+                if(currentTexture) currentTexture.dispose(); currentTexture = new THREE.Texture(img); currentTexture.needsUpdate = true; currentTexture.colorSpace = THREE.SRGBColorSpace; 
+                generateSmartSizes(img.width, img.height); 
+                
+                const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+                const MAX_SIZE = 512; let w = img.width, h = img.height;
+                if (w > h) { if (w > MAX_SIZE) { h *= MAX_SIZE / w; w = MAX_SIZE; } } else { if (h > MAX_SIZE) { w *= MAX_SIZE / h; h = MAX_SIZE; } }
+                canvas.width = w; canvas.height = h; ctx.drawImage(img, 0, 0, w, h);
+                currentImageBase64 = canvas.toDataURL('image/jpeg', 0.6); 
+                
+                captainSpeak("Ух ти, дайте но я погляну ближче...", true);
+                setTimeout(() => { sendToVercel("Опиши це фото як маркетолог"); }, 1500);
+            };
+            img.src = await new Promise((res) => { const reader = new FileReader(); reader.onload = (ev) => res(ev.target.result); reader.readAsDataURL(file); });
+        }
 
-  const manager = new THREE.LoadingManager();
-  const loader = new GLTFLoader(manager);
-  const draco = new DRACOLoader(); draco.setDecoderPath(CONFIG.dracoBase); loader.setDRACOLoader(draco);
+        function loadDefaultTexture() { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => { currentTexture = new THREE.Texture(img); currentTexture.needsUpdate = true; currentTexture.colorSpace = THREE.SRGBColorSpace; generateSmartSizes(img.width, img.height); }; img.src = 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/uv_grid_opengl.jpg'; }
+        function generateSmartSizes(w, h) { const aspect = w / h; const isLand = aspect >= 1; const cAsp = isLand ? aspect : 1 / aspect; const box = document.getElementById('sizeOptionsContainer'); box.innerHTML = ''; const arr = [30, 40, 50, 60, 80], tiles = []; const uniq = new Set(); arr.forEach(l => { let s = Math.round((l / cAsp) / 5) * 5; if (s < 20) s = 20; let w_cm = isLand ? l : s; let h_cm = isLand ? s : l; const key = `${w_cm}x${h_cm}`; if (!uniq.has(key)) { uniq.add(key); tiles.push({ w: w_cm, h: h_cm, p: EXACT_PRICES[key] || (Math.floor(((w_cm * h_cm / 10000) * 2100 + 180) / 10) * 10 + 9) }); } }); tiles.forEach((d, i) => { const lbl = document.createElement('label'); lbl.className = `size-tile`; lbl.innerHTML = `${i === 1 ? '<div class="badge-hit">Хіт 🔥</div>' : ''}<input type="radio" name="sz" value="${d.w},${d.h},${d.p}"><span class="st-size">${d.w} × ${d.h} см</span><span class="st-price">${d.p} ₴</span>`; lbl.querySelector('input').addEventListener('change', (e) => { document.querySelectorAll('.size-tile').forEach(t => t.classList.remove('active')); lbl.classList.add('active'); const [nw, nh, np] = e.target.value.split(','); currentWidthCm = parseInt(nw); currentHeightCm = parseInt(nh); document.getElementById('priceValue').textContent = np; buildCanvas3D(currentWidthCm / 100, currentHeightCm / 100, currentTexture); autoFrameCamera(currentWidthCm / 100, currentHeightCm / 100); }); box.appendChild(lbl); if (i === 1 || (i === 0 && tiles.length === 1)) { lbl.classList.add('active'); lbl.querySelector('input').checked = true; currentWidthCm = d.w; currentHeightCm = d.h; document.getElementById('priceValue').textContent = d.p; } }); buildCanvas3D(currentWidthCm / 100, currentHeightCm / 100, currentTexture); autoFrameCamera(currentWidthCm / 100, currentHeightCm / 100); }
+        function autoFrameCamera(w, h) { if (!container || container.clientWidth === 0 || container.clientHeight === 0) return; const screenW = container.clientWidth; const screenH = container.clientHeight; const activeW = window.innerWidth > 768 ? screenW - 460 : screenW; const activeH = window.innerWidth > 768 ? screenH : screenH * 0.5; const offX = window.innerWidth > 768 ? -230 : 0, offY = window.innerWidth > 768 ? 0 : (screenH - activeH) / 2; const fovRad = camera.fov * (Math.PI / 180); let tz = Math.max((h * 1.2) / (2 * Math.tan(fovRad/2) * (activeH/screenH)), (w * 1.2) / (2 * Math.tan(fovRad/2) * (activeW/screenH))); if (tz > 8) tz = 8; if (tz < 0.3) tz = 0.3; const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize(); if (dir.lengthSq() < 0.1) dir.set(0.35, 0.15, 0.9).normalize(); camera.position.copy(controls.target).add(dir.multiplyScalar(tz)); camera.setViewOffset(screenW, screenH, offX, offY, screenW, screenH); camera.updateProjectionMatrix(); controls.update(); }
+        function resizeCanvas() { if (!container || container.clientWidth === 0 || container.clientHeight === 0) return; camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); autoFrameCamera(currentWidthCm / 100, currentHeightCm / 100); if(capContainerView && capContainerView.clientWidth > 0) { capCamera.aspect = capContainerView.clientWidth / capContainerView.clientHeight; capCamera.updateProjectionMatrix(); capRenderer.setSize(capContainerView.clientWidth, capContainerView.clientHeight); } }
 
-  try {
-    const gltf = await loader.loadAsync(CONFIG.modelUrl);
-    model = gltf.scene; model.scale.setScalar(CONFIG.modelScale);
-    const box = new THREE.Box3().setFromObject(model); const center = new THREE.Vector3(); box.getCenter(center);
-    model.position.x -= center.x; model.position.y -= box.min.y; model.position.y += 0.02;
-
-    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512;
-    const ctx = canvas.getContext('2d'); const grad = ctx.createRadialGradient(256,256,20,256,256,256);
-    grad.addColorStop(0,'rgba(0,0,0,0.9)'); grad.addColorStop(0.4,'rgba(0,0,0,0.45)'); grad.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle = grad; ctx.fillRect(0,0,512,512);
-    const tex = new THREE.CanvasTexture(canvas); tex.encoding = THREE.sRGBEncoding;
-    const shadowMat = new THREE.MeshBasicMaterial({map:tex, transparent:true, depthWrite:false, opacity:CONFIG.shadow.maxOpacity, toneMapped:false});
-    const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1,1), shadowMat); shadowMesh.rotation.x=-Math.PI/2; shadowMesh.position.y=0.001; shadowMesh.renderOrder=2; scene.add(shadowMesh);
-    model.userData.shadowMesh = shadowMesh;
-
-    const highlight = new THREE.Mesh(new THREE.RingGeometry(0.6,0.85,64), new THREE.MeshBasicMaterial({color:0x1f6feb, transparent:true, opacity:0}));
-    highlight.rotation.x = -Math.PI/2; highlight.position.y = 0.01; highlight.visible = false; scene.add(highlight);
-    model.userData.highlightMesh = highlight;
-
-    model.traverse(c=>{ if(c.isMesh){ c.castShadow=true; c.receiveShadow=true; c.frustumCulled=true; if(c.material && 'envMapIntensity' in c.material) c.material.envMapIntensity = (c.material.envMapIntensity||1)*0.9; } if(c.isBone){ if(c.name.includes(CONFIG.bones.head)) bones.head = c; if(c.name.includes(CONFIG.bones.jaw)) bones.jaw = c; } });
-    scene.add(model);
-
-    mixer = new THREE.AnimationMixer(model);
-    try { const anim = await loader.loadAsync(CONFIG.animUrl); if(anim && anim.animations && anim.animations.length) mixer.clipAction(anim.animations[0]).play(); } catch(e){ console.warn('anim', e); }
-
-    model.userData.idleOffset = Math.random()*1000;
-    startLoop();
-  } catch(e){
-    console.error('model load', e); logError({where:'model_load', error:String(e)});
-    window.captain.appendPinnedMessage('Ошибка загрузки 3D-модели.');
-  }
-}
-if('IntersectionObserver' in window){
-  const io = new IntersectionObserver(entries=>{ entries.forEach(e=>{ if(e.isIntersecting) { init3D(); io.disconnect(); } }); }, {threshold:0.1});
-  io.observe(containerEl);
-} else { window.addEventListener('load', init3D); }
-
-/* Animation loop */
-function startLoop(){ if(rafId) cancelAnimationFrame(rafId); const loop = ()=>{ rafId = requestAnimationFrame(loop); const dt = clock.getDelta(); const t = clock.getElapsedTime(); if(mixer) mixer.update(dt); if(model){ const idle = 0.002 * Math.sin((t + model.userData.idleOffset) * 0.8); model.position.y = model.position.y + (idle * 0.5); camera.lookAt(model.position.x, 0.75, 0); if(bones.jaw) bones.jaw.rotation.x = isTalking ? Math.abs(Math.sin(t*15))*0.28 : THREE.MathUtils.lerp(bones.jaw.rotation.x, 0, 0.08); if(bones.head){ bones.head.rotation.y = THREE.MathUtils.lerp(bones.head.rotation.y, window.mouseObserver.x*0.45, 0.12); bones.head.rotation.x = THREE.MathUtils.lerp(bones.head.rotation.x, (window.mouseObserver.y||0)*0.12, 0.12); } if(model.userData.shadowMesh){ const shadow = model.userData.shadowMesh; const box = new THREE.Box3().setFromObject(model); const size = box.getSize(new THREE.Vector3()); const maxDim = Math.max(size.x, size.z, 0.2); const worldPos = new THREE.Vector3(); model.getWorldPosition(worldPos); shadow.position.x = worldPos.x; shadow.position.z = worldPos.z; const scale = Math.max(0.2, maxDim * CONFIG.shadow.baseScaleFactor); shadow.scale.set(scale, scale, 1); const height = Math.max(0, worldPos.y); const tOpacity = Math.min(1, Math.max(0, 1 - (height / 1.5))); shadow.material.opacity = CONFIG.shadow.minOpacity + (CONFIG.shadow.maxOpacity - CONFIG.shadow.minOpacity) * tOpacity; } if(model.userData.highlightMesh){ const hm = model.userData.highlightMesh; const worldPos = new THREE.Vector3(); model.getWorldPosition(worldPos); hm.position.x = worldPos.x; hm.position.z = worldPos.z; if(isTalking){ hm.visible = true; const pulse = 0.9 + 0.1 * Math.sin(clock.getElapsedTime()*8); hm.scale.set(pulse,pulse,1); hm.material.opacity = 0.25 + 0.15 * Math.abs(Math.sin(clock.getElapsedTime()*4)); } else { hm.scale.lerp(new THREE.Vector3(1,1,1), 0.08); hm.material.opacity = THREE.MathUtils.lerp(hm.material.opacity, 0.0, 0.08); if(hm.material.opacity < 0.01) hm.visible = false; } } updateBubblePositionThrottled(); } if(renderer && camera) renderer.render(scene, camera); }; loop(); }
-
-/* Bubble positioning */
-let lastBubbleUpdate = 0;
-function updateBubblePositionThrottled(){ const now = performance.now(); if(now - lastBubbleUpdate < CONFIG.bubbleThrottleMs) return; lastBubbleUpdate = now; updateBubblePosition(); }
-function updateBubblePosition(){ if(!bubbleEl || !model) return; if(!isThinking && !isTalking){ bubbleEl.style.display='none'; bubbleEl.setAttribute('aria-hidden','true'); return; } const target = bones.jaw || bones.head || model; const worldPos = new THREE.Vector3(); target.getWorldPosition(worldPos); worldPos.project(camera); const rect = containerEl.getBoundingClientRect(); const sx = (worldPos.x * 0.5 + 0.5) * rect.width + rect.left; const sy = (worldPos.y * -0.5 + 0.5) * rect.height + rect.top; const x = sx + CONFIG.bubbleOffsetX; const y = sy + CONFIG.bubbleOffsetY; bubbleEl.style.left = Math.round(x) + 'px'; bubbleEl.style.top = Math.round(y) + 'px'; bubbleEl.style.display='block'; bubbleEl.style.opacity='1'; bubbleEl.setAttribute('aria-hidden','false'); }
-
-/* Networking and TTS */
-function cancelSpeech(){ try{ if(currentUtterance){ currentUtterance.onend=null; currentUtterance.onerror=null; currentUtterance=null; } if('speechSynthesis' in window) window.speechSynthesis.cancel(); }catch(e){} }
-function selectVoiceByURI(uri){ const voices = window.speechSynthesis.getVoices() || []; return voices.find(v => (v.voiceURI === uri || v.name === uri)) || null; }
-
-window.sendAction = async function(){
-  if(!inputEl) return; if(requestInProgress) return;
-  const raw = inputEl.value || ''; const msg = raw.trim(); if(!msg) return;
-  window.captain.appendPinnedMessage(msg, { className:'pinned-msg chat-user' }); inputEl.value=''; inputEl.focus();
-  showTypingIndicator();
-  isThinking = true; isTalking = false;
-  requestInProgress = true; sendBtn.disabled = true; inputEl.disabled = true;
-
-  try{
-    cancelSpeech();
-    let attempt=0, data=null, lastErr=null;
-    while(attempt <= CONFIG.fetchRetries){
-      const controller = new AbortController(); const timeoutId = setTimeout(()=>controller.abort(), CONFIG.fetchTimeoutMs);
-      try{
-        const res = await fetch(CONFIG.api, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: msg }), signal: controller.signal });
-        clearTimeout(timeoutId); if(!res.ok) throw new Error('HTTP ' + res.status); data = await res.json(); break;
-      } catch(e){ clearTimeout(timeoutId); lastErr = e; attempt++; if(attempt <= CONFIG.fetchRetries) await new Promise(r=>setTimeout(r, 400 * Math.pow(2, attempt-1))); }
-    }
-
-    hideTypingIndicator();
-    if(!data){ console.error('Fetch failed', lastErr); logError({where:'send_fetch', error:String(lastErr), message:msg}); window.captain.appendPinnedMessage('Ошибка сети. Попробуйте ещё раз.', { className:'pinned-msg chat-bot' }); isThinking=false; bubbleEl.style.display='none'; return; }
-
-    const text = (typeof data.speech === 'string') ? data.speech : String(data.speech || data.reply || data.text || '');
-    window.captain.appendPinnedMessage(text, { className:'pinned-msg chat-bot' }); safeText(bubbleTextEl, text);
-    const speechText = text.slice(0, CONFIG.maxSpeechLength);
-
-    try{
-      if(!('speechSynthesis' in window) || parseFloat(volumeEl.value||1) === 0){
-        isThinking=false; isTalking=false; setTimeout(()=>{ bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; }, 800);
-      } else {
-        currentUtterance = new SpeechSynthesisUtterance(speechText);
-        const selectedURI = voiceSelect.value; const voice = selectVoiceByURI(selectedURI); if(voice) currentUtterance.voice = voice;
-        currentUtterance.lang = voice?.lang || 'ru-RU'; currentUtterance.rate = parseFloat(rateEl.value||1); currentUtterance.volume = parseFloat(volumeEl.value||1);
-
-        currentUtterance.onstart = () => { isThinking=false; isTalking=true; bubbleDotsEl.style.visibility='hidden'; if(model && model.userData.highlightMesh) model.userData.highlightMesh.visible = true; try{ localStorage.setItem('captain_voice_prefs', JSON.stringify({voiceURI:voiceSelect.value||'', rate:rateEl.value, volume:volumeEl.value})); }catch(e){} };
-        currentUtterance.onend = () => { isTalking=false; isThinking=false; currentUtterance=null; if(model && model.userData.highlightMesh) model.userData.highlightMesh.visible = false; setTimeout(()=>{ bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; }, 1200); };
-        currentUtterance.onerror = (ev) => { console.warn('TTS error', ev); logError({where:'tts_error', error:String(ev)}); isTalking=false; isThinking=false; currentUtterance=null; if(model && model.userData.highlightMesh) model.userData.highlightMesh.visible = false; bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; };
-
-        window.speechSynthesis.speak(currentUtterance);
-      }
-    } catch(e){ console.warn('TTS failed', e); logError({where:'tts_exception', error:String(e)}); isTalking=false; isThinking=false; bubbleEl.style.opacity='0'; bubbleEl.style.display='none'; }
-  } catch(err){ console.error('sendAction', err); logError({where:'send_top', error:String(err)}); window.captain.appendPinnedMessage('Ошибка сервера. Попробуйте позже.', { className:'pinned-msg chat-bot' }); isThinking=false; isTalking=false; }
-  finally { requestInProgress=false; sendBtn.disabled=false; inputEl.disabled=false; }
-};
-
-/* Microphone */
-micBtn.addEventListener('click', async ()=>{
-  if(activeRec) return;
-  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if(!SpeechRec){ window.captain.appendPinnedMessage('Voice input not supported in this browser.', { className:'pinned-msg chat-bot' }); return; }
-  try{
-    const rec = new SpeechRec(); activeRec = rec; rec.lang = 'ru-RU'; rec.interimResults = false; rec.maxAlternatives = 1;
-    micBtn.disabled = true; micBtn.textContent = 'Listening...';
-    rec.onresult = (ev)=>{ const t = ev.results[0][0].transcript; inputEl.value = t; micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; window.sendAction(); };
-    rec.onerror = (ev)=>{ window.captain.appendPinnedMessage('Voice recognition error', { className:'pinned-msg chat-bot' }); micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; logError({where:'speechrec_error', error:String(ev)}); };
-    rec.onend = ()=>{ micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; };
-    rec.start();
-  } catch(e){ console.warn('mic start', e); micBtn.disabled=false; micBtn.textContent='🎤'; activeRec=null; logError({where:'mic_start', error:String(e)}); }
-});
-
-/* UI bindings */
-sendBtn.addEventListener('click', ()=> window.sendAction());
-inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); window.sendAction(); } });
-
-undoBtn.addEventListener('click', ()=> {
-  const removed = window.captain.undoLastPinned();
-  if(removed) window.captain.appendPinnedMessage('Undo: ' + removed, { className:'pinned-msg chat-bot', maxVisible:1 });
-});
-clearBtn.addEventListener('click', ()=> { window.captain.clearPinned(); window.captain.appendPinnedMessage('Чат очищен', { className:'pinned-msg chat-bot' }); });
-
-[sendBtn, micBtn, undoBtn, clearBtn].forEach(b => {
-  b.addEventListener('mouseenter', ()=> b.style.transform = 'translateY(-2px)');
-  b.addEventListener('mouseleave', ()=> b.style.transform = '');
-  b.addEventListener('mousedown', ()=> b.style.transform = 'translateY(0)');
-  b.addEventListener('mouseup', ()=> b.style.transform = 'translateY(-2px)');
-});
-
-window.addEventListener('mousemove', e=>{ window.mouseObserver.x = (e.clientX / window.innerWidth) * 2 - 1; window.mouseObserver.y = (e.clientY / window.innerHeight) * 2 - 1; }, {passive:true});
-window.addEventListener('touchmove', e=>{ if(!e.touches||!e.touches[0]) return; const t=e.touches[0]; window.mouseObserver.x=(t.clientX/window.innerWidth)*2-1; window.mouseObserver.y=(t.clientY/window.innerHeight)*2-1; }, {passive:true});
-
-window.addEventListener('resize', ()=>{ if(!camera||!renderer||!containerEl) return; camera.aspect = containerEl.clientWidth / containerEl.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(containerEl.clientWidth, containerEl.clientHeight); });
-
-document.addEventListener('visibilitychange', ()=>{ try{ if(document.visibilityState !== 'visible' && window.speechSynthesis) window.speechSynthesis.pause(); if(document.visibilityState === 'visible' && window.speechSynthesis) window.speechSynthesis.resume(); }catch(e){} });
-
-/* Register SW */
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('/sw.js').then(()=>console.log('sw registered')).catch(err=>{ console.warn('sw failed', err); logError({where:'sw_register', error:String(err)}); }); });
-}
-</script>
+        document.getElementById('orderButton').addEventListener('click', async () => {
+            const btn = document.getElementById('orderButton'); const phone = document.getElementById('customerPhone').value.trim();
+            if (!phone) { showToast("Вкажіть телефон!", "error"); return; }
+            btn.disabled = true; btn.innerHTML = "⏳ Надсилаємо...";
+            try { await new Promise(r => setTimeout(r, 1200)); showToast("Замовлення надіслано!", "success"); captainSpeak("Фото у нас! Скоро передзвонимо."); document.getElementById('customerPhone').value = ''; } 
+            catch { showToast("Помилка", "error"); } finally { btn.disabled = false; btn.innerHTML = "🚀 Замовити друк"; }
+        });
+    </script>
 </body>
-</html> вот наш код
+</html>
