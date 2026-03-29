@@ -1,7 +1,7 @@
 import Groq from 'groq-sdk';
 
 export const config = {
-  api: { bodyParser: { sizeLimit: '5mb' } }
+  api: { bodyParser: { sizeLimit: '4mb' } }
 };
 
 export default async function handler(req, res) {
@@ -17,8 +17,13 @@ export default async function handler(req, res) {
     const client = new Groq({ apiKey });
     const { message, imageBase64 } = req.body || {};
 
-    const systemPrompt = `
-Ти — Капітан, елітний бренд-експерт Cherry Design. Ти продаєш не друк, а статус та емоції.
+    const systemPrompt = `Ти — Капітан, топ-маркетолог Cherry Design та психолог продажів. 
+Твоя мета: продати преміальний друк на полотні за 5 секунд.
+ТЕХНІКИ:
+- NLP: "Ваш простір засяє", "Ви відчуєте аромат сосни", "Ця мить варта бути вічною".
+- Продажі: Роби глибокий комплімент фото (якщо воно є). Пропонуй формат побільше як ідеальний вибір.
+- Харизма: Ти впевнений експерт, не ображаєшся, ведеш діалог до замовлення.
+
 ТВОЯ ЗАДАЧА ПРИ АНАЛІЗІ ФОТО:
 1. Опиши атмосферу кадру (наприклад: "кінематографічне світло", "глибока перспектива").
 2. Поясни, як текстура полотна додасть цьому фото "об'єму" та "життя".
@@ -26,31 +31,41 @@ export default async function handler(req, res) {
 4. Психологія ціни: М'яко аргументуй, що великий формат (60х40 або 80х60) розкриє цей шедевр повністю.
 Мова: Українська. Стиль: Дорогий, впевнений, лаконічний (до 300 символів).
 `;
+Мова: Українська. Довжина: до 280 символів.`;
 
-    // СТАБІЛЬНІ МОДЕЛІ 2026 (БЕЗ -PREVIEW)
-    const modelName = imageBase64 ? 'llama-3.2-11b-vision' : 'llama-3.3-70b-versatile';
-    
-    const messages = [{ role: 'system', content: systemPrompt }];
-    if (imageBase64) {
-      messages.push({ role: 'user', content: [
-        { type: "text", text: message },
-        { type: "image_url", image_url: { url: imageBase64 } }
-      ]});
-    } else {
-      messages.push({ role: 'user', content: message });
+    // АКТУАЛЬНІ МОДЕЛІ 2026
+    const VISION_MODEL = 'llama-3.2-11b-vision'; 
+    const TEXT_MODEL = 'llama-3.3-70b-versatile';
+
+    let response;
+    try {
+      // Спроба використати зір, якщо є фото
+      const model = imageBase64 ? VISION_MODEL : TEXT_MODEL;
+      const content = imageBase64 
+        ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageBase64 } }]
+        : message;
+
+      response = await client.chat.completions.create({
+        model: model,
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: content }],
+        temperature: 0.7,
+        max_tokens: 350
+      });
+    } catch (modelErr) {
+      // Якщо Vision модель недоступна (decommissioned), миттєво перемикаємось на текст
+      console.error("Switching to text-only mode");
+      response = await client.chat.completions.create({
+        model: TEXT_MODEL,
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: message }],
+        temperature: 0.7
+      });
     }
 
-    const completion = await client.chat.completions.create({
-      model: modelName,
-      messages: messages,
-      temperature: 0.7,
-      max_tokens: 450
-    });
-
-    return res.status(200).json({ speech: completion.choices?.[0]?.message?.content });
+    const reply = response.choices?.[0]?.message?.content || 'Бос, я на зв’язку!';
+    return res.status(200).json({ speech: reply.trim() });
 
   } catch (err) {
-    console.error('Groq Error:', err);
-    return res.status(200).json({ speech: `Бос, невеличка технічна заминка з API, але я вже на зв'язку і готовий обговорити Ваше замовлення!` });
+    return res.status(200).json({ speech: `Мяу! Проблема з API: ${err.message.split(':')[0]}. Але я готовий до друку!` });
   }
 }
+
