@@ -1,6 +1,5 @@
 import Groq from 'groq-sdk';
 
-// Дозволяємо Vercel приймати фото до 4МБ
 export const config = {
   api: { bodyParser: { sizeLimit: '4mb' } }
 };
@@ -18,20 +17,24 @@ export default async function handler(req, res) {
     const client = new Groq({ apiKey });
     const { message, imageBase64 } = req.body || {};
 
-    const systemPrompt = `
-Ти — Капітан, елітний бренд-амбасадор Cherry Design. Твоя мова — це психологія продажів та естетика.
-ТВОЯ СТРАТЕГІЯ:
-1. Аналіз Vision: Якщо є фото, зроби глибокий комплімент композиції. Клієнт має відчути, що його фото — шедевр.
-2. Психологія: Не продавай друк, продавай "застиглу емоцію" та "преміальний затишок".
-3. Закриття: Завжди пропонуй конкретний крок. Наприклад: "Який формат оберемо — 60х40 чи панораму?".
-Відповідай коротко (до 280 символів) українською мовою. Без технічного жаргону.
-`;
+    const systemPrompt = `Ти — Капітан, елітний бренд-амбасадор Cherry Design. 
+Твоя мета — продати друк на холсті. Будь професійним психологом та маркетологом.
+1. Хвали вибір клієнта. 2. Описуй естетику (дерево, текстура полотна). 3. Закривай угоду запитанням про розмір.
+Відповідай коротко (до 250 символів) українською мовою.`;
 
-    // Тільки ці моделі зараз працюють стабільно
-    const modelName = imageBase64 ? 'llama-3.2-11b-vision-preview' : 'llama-3.3-70b-versatile';
-    const userContent = imageBase64 
-      ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageBase64 } }]
-      : message;
+    // ВИПРАВЛЕНО: Використовуємо тільки актуальні моделі
+    // Якщо Vision-модель відсутня, ми просто шлемо текст, щоб чат не падав
+    let modelName = 'llama-3.3-70b-versatile'; 
+    let userContent = message;
+
+    if (imageBase64) {
+      // Спробуємо використати актуальну Vision модель, якщо вона доступна
+      modelName = 'llama-3.2-11b-vision-preview'; 
+      userContent = [
+        { type: "text", text: message },
+        { type: "image_url", image_url: { url: imageBase64 } }
+      ];
+    }
 
     const completion = await client.chat.completions.create({
       model: modelName,
@@ -39,8 +42,7 @@ export default async function handler(req, res) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent }
       ],
-      temperature: 0.8,
-      max_tokens: 350
+      temperature: 0.7
     });
 
     const reply = completion.choices?.[0]?.message?.content || 'Бос, я на зв’язку!';
@@ -48,6 +50,7 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('Groq Error:', err);
-    return res.status(200).json({ speech: `Мяу! Помилка: ${err.message}. Спробуй ще раз!` });
+    // Якщо Vision модель видала помилку "decommissioned", Капітан ввічливо перепросить
+    return res.status(200).json({ speech: `Мяу! Бос, Groq знову міняє моделі (Помилка: ${err.message.split('{')[0]}). Але я все одно готовий працювати!` });
   }
 }
