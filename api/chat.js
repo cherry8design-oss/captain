@@ -21,7 +21,7 @@ export default async function handler(req, res) {
     
     if (!message) return res.status(400).json({ error: 'Empty message' });
 
-    // Промпт без вимоги JSON. Просто ідеальний продажник.
+    // Промпт продажника
     const systemPrompt = `Ти — харизматичний кіт-маркетолог Капітан, головний експерт Cherry Design. 
 Твоя мета — за допомогою НЛП та емпатії продати друк фото на холсті.
 ПРАВИЛА:
@@ -52,12 +52,10 @@ export default async function handler(req, res) {
 
     const reply = completion.choices?.[0]?.message?.content || 'Мяу! Я на хвилинку відволікся, повторіть будь ласка.';
     
-    // Повертаємо чистий текст
     return res.status(200).json({ speech: reply.trim() });
 
   } catch (err) {
     console.error('Groq Error:', err);
-    // Тепер Vercel поверне точну причину помилки в консоль, а не просто впаде
     return res.status(500).json({ speech: 'Ой, сервер перевантажений! Спробуйте ще раз.', details: err.message });
   }
 }
