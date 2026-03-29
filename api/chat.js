@@ -1,8 +1,7 @@
 import Groq from 'groq-sdk';
 
-// Збільшуємо ліміт для картинок на Vercel
 export const config = {
-  api: { bodyParser: { sizeLimit: '5mb' } }
+  api: { bodyParser: { sizeLimit: '4mb' } }
 };
 
 export default async function handler(req, res) {
@@ -10,57 +9,50 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error('GROQ_API_KEY is missing');
-
     const client = new Groq({ apiKey });
     const { message, imageBase64 } = req.body || {};
-    
-    if (!message) return res.status(400).json({ error: 'Empty message' });
 
-    const systemPrompt = `Ти — харизматичний кіт-маркетолог Капітан, головний експерт Cherry Design. 
-Твоя мета — за допомогою НЛП та емпатії продати друк фото на холсті.
-ПРАВИЛА:
-1. Якщо тобі передали фото — уважно опиши, що ти бачиш (зроби комплімент сюжету чи кольорам).
-2. Розкажи, як круто це виглядатиме на натуральному дереві.
-3. Обов'язково завершуй репліку легким закликом до дії (наприклад, "Оформлюємо?").
-4. ВІДПОВІДАЙ ЛИШЕ ТЕКСТОМ (без розмітки, без JSON). Твоя репліка має бути короткою (до 300 символів), живою та позитивною.`;
+    // ПРОФЕСІЙНИЙ NLP-ПРОМПТ (Cherry Design Edition)
+    const systemPrompt = `
+Ти — Капітан, елітний бренд-амбасадор студії Cherry Design. Твоя мова — це поєднання естетики, психології продажів та котячої харизми.
+ТВОЯ СТРАТЕГІЯ:
+1. Аналіз Vision: Якщо є фото, зроби глибокий комплімент (світло, емоція, композиція). Клієнт має відчути, що його фото — шедевр.
+2. Психологія цінності: Не продавай "друк", продавай "застиглу мить" та "преміальний затишок". Згадуй про аромат дерева та глибину полотна.
+3. NLP-тригери: Використовуй фрази: "Ваш інтер'єр засяє", "Це фото ідеально ляже на преміальну натяжку", "Ви відчуєте якість у кожній деталі".
+4. Закриття угоди: Завжди пропонуй конкретний крок. Наприклад: "Який формат оберемо — класику чи панораму?", "Бронюємо за Вами місце в черзі на друк?".
 
-    let finalContent;
-    let modelName;
+ОБМЕЖЕННЯ:
+- Мова: Українська.
+- Стиль: Професійний, впевнений, але дружній (без зайвого "мяукання").
+- Довжина: До 280 символів.
+- Ніякої технічної інфи про моделі ІІ.
+`;
 
-    // ВИПРАВЛЕНА ЛОГІКА:
-    if (imageBase64) {
-      // Якщо є картинка - використовуємо Vision і спеціальний формат масиву
-      modelName = 'llama-3.2-90b-vision-preview';
-      finalContent = [
-        { type: "text", text: message },
-        { type: "image_url", image_url: { url: imageBase64 } }
-      ];
-    } else {
-      // Якщо картинки немає - звичайна модель і ПРОСТИЙ ТЕКСТ (інакше Groq видає помилку 500)
-      modelName = 'llama-3.3-70b-versatile';
-      finalContent = message;
-    }
+    const modelName = imageBase64 ? 'llama-3.2-11b-vision-preview' : 'llama-3.3-70b-versatile';
+    const userContent = imageBase64 
+      ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageBase64 } }]
+      : message;
 
     const completion = await client.chat.completions.create({
-      model: modelName, 
+      model: modelName,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: finalContent }
+        { role: 'user', content: userContent }
       ],
-      temperature: 0.7
+      temperature: 0.8, // Більше креативності для маркетингу
+      max_tokens: 350
     });
 
-    const reply = completion.choices?.[0]?.message?.content || 'Мяу! Я тут, що підказати?';
-    
+    const reply = completion.choices?.[0]?.message?.content || 'Бос, я готовий перетворити цей кадр на витвір мистецтва!';
     return res.status(200).json({ speech: reply.trim() });
 
   } catch (err) {
     console.error('Groq Error:', err);
-    return res.status(500).json({ speech: 'Ой, сервер перевантажений! Спробуйте ще раз.', details: err.message });
+    return res.status(200).json({ speech: `Капітан на зв'язку! Бос, перевір лог: ${err.message}` });
   }
 }
