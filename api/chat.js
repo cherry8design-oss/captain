@@ -1,91 +1,63 @@
-// api/chat.js
 import Groq from 'groq-sdk';
 
-// ВАЖЛИВО ДЛЯ VERCEL: Збільшуємо ліміт розміру запиту для Base64 зображень
+// Збільшуємо ліміт для картинок на Vercel
 export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
+  api: { bodyParser: { sizeLimit: '5mb' } }
 };
 
-const MAX_SPEECH_LENGTH = 450;
-
-function safeString(v) { return typeof v === 'string' ? v.replace(/[\u0000-\u001F\u007F-\u009F]/g,'').trim() : ''; }
-
 export default async function handler(req, res) {
-  // CORS Налаштування
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'GROQ_API_KEY missing' });
-
-  const client = new Groq({ apiKey });
-
   try {
-    let { message, imageBase64 } = req.body || {};
-    message = safeString(message);
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error('GROQ_API_KEY is missing');
+
+    const client = new Groq({ apiKey });
+    const { message, imageBase64 } = req.body || {};
+    
     if (!message) return res.status(400).json({ error: 'Empty message' });
 
-    // СИСТЕМНИЙ ПРОМПТ СВІТОВОГО РІВНЯ (NLP Продажник + Зір + Емоції)
-    const systemPrompt = `
-Ти — Капітан, харизматичний ІІ-асистент та геніальний маркетолог студії "Cherry Design".
-Твоє завдання — провести клієнта до покупки холста, використовуючи м'яке НЛП-дотискання.
-
-ТВІЙ АЛГОРИТМ:
-1. Якщо тобі передали фото, УВАЖНО ОПИШИ його деталі (хто там, які кольори, який настрій). Зроби щирий комплімент фотографії!
-2. Завжди завершуй відповідь закликом до дії (Call to Action). Наприклад: "Формат 60х40 ідеально підійде! Оформлюємо?", "Тисніть Замовити, і я вже передаю файл у друк!".
-3. Ти завжди привітний, енергійний і розмовляєш чистою українською мовою.
-
-СИСТЕМА РЕАКЦІЙ (reaction):
-Ти маєш голографічний генератор емоцій. Вибери ОДИН символ, який найкраще підходить до ситуації:
-- "❤️" (романтика, сім'я, діти, милі тварини)
-- "🔥" (машини, круті пейзажі, стильні фото, драйв)
-- "✨" (вітання, захоплення, загальна краса)
-- "💰" (якщо натякаєш на знижку або вигоду)
-- "null" (якщо реакція не потрібна)
-
-Формат відповіді (ТІЛЬКИ ВАЛІДНИЙ JSON):
-{
-  "speech": "Твій текст відповіді (макс ${MAX_SPEECH_LENGTH} символів)",
-  "reaction": "❤️"
-}
-`;
+    // Промпт без вимоги JSON. Просто ідеальний продажник.
+    const systemPrompt = `Ти — харизматичний кіт-маркетолог Капітан, головний експерт Cherry Design. 
+Твоя мета — за допомогою НЛП та емпатії продати друк фото на холсті.
+ПРАВИЛА:
+1. Якщо тобі передали фото — уважно опиши, що ти бачиш (зроби комплімент сюжету чи кольорам).
+2. Розкажи, як круто це виглядатиме на натуральному дереві.
+3. Обов'язково завершуй репліку легким закликом до дії (наприклад, "Оформлюємо?").
+4. ВІДПОВІДАЙ ЛИШЕ ТЕКСТОМ (без розмітки, без JSON). Твоя репліка має бути короткою (до 300 символів), живою та позитивною.`;
 
     let userContent = [];
+    userContent.push({ type: "text", text: message });
+    
+    // Якщо прийшла картинка — додаємо її в мозок ІІ
     if (imageBase64) {
       userContent.push({ type: "image_url", image_url: { url: imageBase64 } });
     }
-    userContent.push({ type: "text", text: message });
 
-    // Використовуємо потужну модель із зором
+    // Розумний роутинг моделей: Vision тільки коли є картинка
+    const modelName = imageBase64 ? 'llama-3.2-90b-vision-preview' : 'llama-3.3-70b-versatile';
+
     const completion = await client.chat.completions.create({
-      model: 'llama-3.2-90b-vision-preview', 
+      model: modelName, 
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent }
       ],
-      response_format: { type: 'json_object' },
       temperature: 0.7
     });
 
-    const raw = completion.choices?.[0]?.message?.content || '{}';
-    let parsed;
-    try { parsed = JSON.parse(raw); } catch(e) { parsed = { speech: raw }; }
-
-    // Віддаємо фронтенду і мову, і реакцію
-    return res.status(200).json({ 
-      speech: parsed.speech || '',
-      reaction: parsed.reaction || null
-    });
+    const reply = completion.choices?.[0]?.message?.content || 'Мяу! Я на хвилинку відволікся, повторіть будь ласка.';
+    
+    // Повертаємо чистий текст
+    return res.status(200).json({ speech: reply.trim() });
 
   } catch (err) {
-    console.error('Chat error:', err);
-    return res.status(500).json({ speech: 'Капітан на хвилинку відволікся! Спробуйте ще раз.', reaction: '⚙️' });
+    console.error('Groq Error:', err);
+    // Тепер Vercel поверне точну причину помилки в консоль, а не просто впаде
+    return res.status(500).json({ speech: 'Ой, сервер перевантажений! Спробуйте ще раз.', details: err.message });
   }
 }
