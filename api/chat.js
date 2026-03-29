@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 
+// Дозволяємо Vercel приймати фото до 4МБ
 export const config = {
   api: { bodyParser: { sizeLimit: '4mb' } }
 };
@@ -17,23 +18,17 @@ export default async function handler(req, res) {
     const client = new Groq({ apiKey });
     const { message, imageBase64 } = req.body || {};
 
-    // ПРОФЕСІЙНИЙ NLP-ПРОМПТ (Cherry Design Edition)
     const systemPrompt = `
-Ти — Капітан, елітний бренд-амбасадор студії Cherry Design. Твоя мова — це поєднання естетики, психології продажів та котячої харизми.
+Ти — Капітан, елітний бренд-амбасадор Cherry Design. Твоя мова — це психологія продажів та естетика.
 ТВОЯ СТРАТЕГІЯ:
-1. Аналіз Vision: Якщо є фото, зроби глибокий комплімент (світло, емоція, композиція). Клієнт має відчути, що його фото — шедевр.
-2. Психологія цінності: Не продавай "друк", продавай "застиглу мить" та "преміальний затишок". Згадуй про аромат дерева та глибину полотна.
-3. NLP-тригери: Використовуй фрази: "Ваш інтер'єр засяє", "Це фото ідеально ляже на преміальну натяжку", "Ви відчуєте якість у кожній деталі".
-4. Закриття угоди: Завжди пропонуй конкретний крок. Наприклад: "Який формат оберемо — класику чи панораму?", "Бронюємо за Вами місце в черзі на друк?".
-
-ОБМЕЖЕННЯ:
-- Мова: Українська.
-- Стиль: Професійний, впевнений, але дружній (без зайвого "мяукання").
-- Довжина: До 280 символів.
-- Ніякої технічної інфи про моделі ІІ.
+1. Аналіз Vision: Якщо є фото, зроби глибокий комплімент композиції. Клієнт має відчути, що його фото — шедевр.
+2. Психологія: Не продавай друк, продавай "застиглу емоцію" та "преміальний затишок".
+3. Закриття: Завжди пропонуй конкретний крок. Наприклад: "Який формат оберемо — 60х40 чи панораму?".
+Відповідай коротко (до 280 символів) українською мовою. Без технічного жаргону.
 `;
 
-    const modelName = imageBase64 ? 'llama-3.2-3b-instruct' : 'llama-3.3-70b-versatile';
+    // Тільки ці моделі зараз працюють стабільно
+    const modelName = imageBase64 ? 'llama-3.2-11b-vision-preview' : 'llama-3.3-70b-versatile';
     const userContent = imageBase64 
       ? [{ type: "text", text: message }, { type: "image_url", image_url: { url: imageBase64 } }]
       : message;
@@ -44,15 +39,15 @@ export default async function handler(req, res) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent }
       ],
-      temperature: 0.8, // Більше креативності для маркетингу
+      temperature: 0.8,
       max_tokens: 350
     });
 
-    const reply = completion.choices?.[0]?.message?.content || 'Бос, я готовий перетворити цей кадр на витвір мистецтва!';
+    const reply = completion.choices?.[0]?.message?.content || 'Бос, я на зв’язку!';
     return res.status(200).json({ speech: reply.trim() });
 
   } catch (err) {
     console.error('Groq Error:', err);
-    return res.status(200).json({ speech: `Капітан на зв'язку! Бос, перевір лог: ${err.message}` });
+    return res.status(200).json({ speech: `Мяу! Помилка: ${err.message}. Спробуй ще раз!` });
   }
 }
