@@ -5,53 +5,170 @@
     <title>Cherry Design | Premium 3D Canvas & AI Expert</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        #cherry-app-wrapper { --cherry-main: #d90429; --text-dark: #111827; --text-muted: #6b7280; --panel-bg: rgba(255, 255, 255, 0.85); --card-bg: rgba(255, 255, 255, 0.9); --btn-green: #10b981; position: relative; width: 100vw; margin-left: calc(-50vw + 50%); height: calc(100vh - 80px); min-height: 600px; overflow: hidden; background: radial-gradient(circle at center, #ffffff 0%, #e2e8f0 100%); font-family: 'Inter', sans-serif; color: var(--text-dark); }
+        
+        #cherry-app-wrapper { 
+            --cherry-main: #d90429; --text-dark: #111827; --text-muted: #6b7280; 
+            --panel-bg: rgba(255, 255, 255, 0.85); --card-bg: rgba(255, 255, 255, 0.9); 
+            --btn-green: #10b981; position: relative; width: 100vw; 
+            margin-left: calc(-50vw + 50%); height: calc(100vh - 80px); 
+            min-height: 600px; overflow: hidden; 
+            background: radial-gradient(circle at center, #ffffff 0%, #e2e8f0 100%); 
+            font-family: 'Inter', sans-serif; color: var(--text-dark); 
+        }
+        
         #cherry-app-wrapper * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
-        #viewport-3d { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: grab; z-index: 1; touch-action: none; } #viewport-3d:active { cursor: grabbing; }
-        #cherry-loader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); backdrop-filter: blur(10px); z-index: 99; display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 0.3s ease; pointer-events: none; }
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(217, 4, 41, 0.2); border-top-color: var(--cherry-main); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 100% { transform: rotate(360deg); } }
+        #viewport-3d { width: 100%; height: 100%; position: absolute; top: 0; left: 0; cursor: grab; z-index: 1; touch-action: none; } 
+        #viewport-3d:active { cursor: grabbing; }
+        
+        #cherry-loader { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); 
+            z-index: 99; display: flex; justify-content: center; align-items: center; 
+            flex-direction: column; transition: opacity 0.4s ease; pointer-events: none; 
+        }
+        .spinner { 
+            width: 40px; height: 40px; border: 4px solid rgba(217, 4, 41, 0.2); 
+            border-top-color: var(--cherry-main); border-radius: 50%; 
+            animation: spin 1s linear infinite; margin-bottom: 12px; 
+        } 
+        @keyframes spin { 100% { transform: rotate(360deg); } }
         .loader-text { font-weight: 700; color: var(--cherry-main); font-size: 0.9rem; letter-spacing: 0.05em; }
-        #captain-container { position: absolute; bottom: 20px; right: 2%; width: 340px; height: 420px; z-index: 15; pointer-events: none; transition: bottom 0.3s; } #captain-3d-view { width: 100%; height: 100%; pointer-events: none; }
-        #captain-bubble-box { display: none; position: absolute; transform: translate(-50%, -100%); background: linear-gradient(180deg,#fff,#fbfbfb); border: 2px solid rgba(20,20,20,0.06); border-radius: 18px; padding: 12px 16px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); color: #111; font-weight: 700; font-size: 14px; max-width: 280px; text-align: center; z-index: 9999; transition: opacity .18s ease; }
-        #captain-bubble-box .tail { position: absolute; width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-top: 12px solid rgba(255,255,255,0.98); left: 50%; transform: translateX(-50%); bottom: -10px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); }
+        
+        #captain-container { 
+            position: absolute; bottom: 0; right: 2%; width: 350px; height: 100%; 
+            z-index: 15; pointer-events: none; transition: bottom 0.3s; 
+        } 
+        #captain-3d-view { width: 100%; height: 100%; pointer-events: none; }
+        #captain-bubble-box { 
+            display: none; position: absolute; transform: translate(-50%, -100%); 
+            background: linear-gradient(180deg,#fff,#fbfbfb); border: 2px solid rgba(20,20,20,0.06); 
+            border-radius: 18px; padding: 10px 14px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); 
+            color: #111; font-weight: 700; font-size: 13px; max-width: 240px; 
+            text-align: center; z-index: 9999; transition: opacity .18s ease; 
+        }
+        #captain-bubble-box .tail { 
+            position: absolute; width: 0; height: 0; border-left: 8px solid transparent; 
+            border-right: 8px solid transparent; border-top: 10px solid rgba(255,255,255,0.98); 
+            left: 50%; transform: translateX(-50%); bottom: -8px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08)); 
+        }
         .bubble-dots { display: inline-block; margin-left: 8px; opacity: 0.7; font-weight: 700; visibility: hidden; }
+        
         #captain-ui-wrapper { position: absolute; right: 24px; bottom: 180px; z-index: 20; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; pointer-events: auto; }
-        #captain-toggle-btn { background: var(--panel-bg); backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,0.05); padding: 10px 20px; border-radius: 30px; font-weight: 700; font-size: 0.85rem; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 8px; transition: all 0.2s; } #captain-toggle-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
-        #captain-chat-panel { background: var(--panel-bg); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.6); border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); width: 320px; padding: 16px; display: none; flex-direction: column; gap: 12px; }
-        #captain-chat-history { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; } #captain-chat-history::-webkit-scrollbar { width: 4px; } #captain-chat-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .chat-item { padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; line-height: 1.4; max-width: 90%; } .chat-user { align-self: flex-end; background: #e0e7ff; color: #3730a3; font-weight: 600; } .chat-bot { align-self: flex-start; background: #f1f5f9; color: var(--text-dark); }
-        .chat-controls { display: flex; gap: 6px; } .chat-controls input { flex: 1; padding: 10px 14px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.1); outline: none; font-family: 'Inter', sans-serif; font-size: 0.85rem; } .chat-controls button { background: #1f6feb; color: white; border: none; border-radius: 12px; padding: 0 14px; font-weight: 700; cursor: pointer; transition: 0.2s; } .chat-controls button.btn-mic { background: linear-gradient(135deg, #ff5a5f, #ff8a00); font-size: 1.1rem; }
-        .hint-360 { position: absolute; top: 24px; right: 24px; background: rgba(255,255,255,0.7); padding: 10px 20px; border-radius: 40px; font-size: 0.85rem; font-weight: 700; pointer-events: none; z-index: 2; box-shadow: 0 8px 32px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 8px; backdrop-filter: blur(12px); animation: pulseHint 3s infinite; } @keyframes pulseHint { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
-        .btn-ar { position: absolute; top: 24px; right: 200px; z-index: 5; background: rgba(255,255,255,0.85); padding: 10px 20px; border-radius: 40px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); text-decoration: none; border: 1px solid rgba(0,0,0,0.1); }
+        #captain-toggle-btn { 
+            background: var(--panel-bg); backdrop-filter: blur(12px); border: 1px solid rgba(0,0,0,0.05); 
+            padding: 10px 20px; border-radius: 30px; font-weight: 700; font-size: 0.85rem; 
+            cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 8px; transition: all 0.2s; 
+        } 
+        #captain-toggle-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); }
+        #captain-chat-panel { 
+            background: var(--panel-bg); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.6); 
+            border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); width: 320px; padding: 16px; 
+            display: none; flex-direction: column; gap: 12px; 
+        }
+        #captain-chat-history { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; } 
+        #captain-chat-history::-webkit-scrollbar { width: 4px; } 
+        #captain-chat-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        .chat-item { padding: 8px 12px; border-radius: 12px; font-size: 0.85rem; line-height: 1.4; max-width: 90%; } 
+        .chat-user { align-self: flex-end; background: #e0e7ff; color: #3730a3; font-weight: 600; } 
+        .chat-bot { align-self: flex-start; background: #f1f5f9; color: var(--text-dark); }
+        .chat-controls { display: flex; gap: 6px; } 
+        .chat-controls input { flex: 1; padding: 10px 14px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.1); outline: none; font-family: 'Inter', sans-serif; font-size: 0.85rem; } 
+        .chat-controls button { background: #1f6feb; color: white; border: none; border-radius: 12px; padding: 0 14px; font-weight: 700; cursor: pointer; transition: 0.2s; } 
+        .chat-controls button.btn-mic { background: linear-gradient(135deg, #ff5a5f, #ff8a00); font-size: 1.1rem; }
+        
+        .hint-360 { position: absolute; top: 24px; right: 24px; background: rgba(255,255,255,0.7); padding: 10px 20px; border-radius: 40px; font-size: 0.85rem; font-weight: 700; pointer-events: none; z-index: 2; box-shadow: 0 8px 32px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 8px; backdrop-filter: blur(12px); animation: pulseHint 3s infinite; } 
+        @keyframes pulseHint { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
+        
+        .btn-ar { position: absolute; top: 24px; right: 200px; z-index: 5; background: rgba(255,255,255,0.85); padding: 10px 20px; border-radius: 40px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.08); text-decoration: none; border: 1px solid rgba(0,0,0,0.1); transition: 0.2s; } 
+        .btn-ar:hover { background: #fff; transform: scale(1.02); }
+        
+        #callback-btn { 
+            position: fixed; bottom: 30px; left: 30px; z-index: 100; 
+            background: linear-gradient(135deg, #ff5a5f, #ff8a00); color: white; 
+            padding: 16px 24px; border-radius: 50px; font-weight: 700; font-size: 0.9rem; 
+            cursor: pointer; box-shadow: 0 10px 30px rgba(255, 90, 95, 0.4); 
+            display: flex; align-items: center; gap: 10px; transition: 0.3s; border: none; 
+        } 
+        #callback-btn:hover { transform: scale(1.05) translateY(-5px); box-shadow: 0 15px 40px rgba(255, 90, 95, 0.6); } 
         
         .ui-panel { position: absolute; top: 20px; left: 20px; width: 420px; background: var(--panel-bg); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.6); border-radius: 32px; box-shadow: 0 30px 60px -15px rgba(0,0,0,0.15); z-index: 10; max-height: calc(100% - 40px); display: flex; flex-direction: column; transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
-        .ui-header { padding: 24px 28px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; cursor: pointer; } .brand-logo { font-weight: 800; font-size: 1.4rem; color: var(--cherry-main); display: flex; align-items: center; gap: 8px; }
-        .ui-panel-scroll { overflow-y: auto; overflow-x: hidden; padding: 0 28px 28px; flex-grow: 1; display: flex; flex-direction: column; gap: 16px; position: relative; } .ui-panel-scroll::-webkit-scrollbar { display: none; }
+        .ui-header { padding: 24px 28px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; cursor: pointer; } 
+        .brand-logo { font-weight: 800; font-size: 1.4rem; color: var(--cherry-main); display: flex; align-items: center; gap: 8px; }
+        .ui-panel-scroll { overflow-y: auto; overflow-x: hidden; padding: 0 28px 28px; flex-grow: 1; display: flex; flex-direction: column; gap: 16px; position: relative; } 
+        .ui-panel-scroll::-webkit-scrollbar { display: none; }
         
         .card-block { background: var(--card-bg); border: 1px solid rgba(255,255,255,0.8); border-radius: 24px; padding: 20px; transition: transform 0.3s ease; }
-        .file-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; border: 2px dashed rgba(217, 4, 41, 0.4); border-radius: 20px; background: rgba(217, 4, 41, 0.02); cursor: pointer; position: relative; } .file-upload input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2; } .upload-icon { font-size: 2.2rem; margin-bottom: 8px; color: var(--text-dark); opacity: 0.6; } .upload-title { font-size: 0.95rem; font-weight: 700; color: var(--text-dark); text-align: center; }
-        .image-preview-container { display: none; width: 100%; align-items: center; gap: 16px; pointer-events: none; } .image-preview-container img { width: 64px; height: 64px; object-fit: cover; border-radius: 16px; border: 2px solid white; } .preview-info { display: flex; flex-direction: column; } .preview-info .file-name { font-size: 0.9rem; font-weight: 700; display: block; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; } .preview-info .change-text { font-size: 0.8rem; color: var(--cherry-main); font-weight: 700; text-decoration: underline; pointer-events: auto; cursor: pointer; }
-        .size-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .size-tile { position: relative; display: flex; flex-direction: column; align-items: center; padding: 14px 10px; background: rgba(0,0,0,0.02); border-radius: 16px; border: 2px solid transparent; cursor: pointer; } .size-tile input { display: none; } .size-tile .st-size { font-weight: 800; font-size: 0.95rem; } .size-tile .st-price { font-weight: 600; font-size: 0.75rem; color: var(--text-muted); } .size-tile.active { border-color: var(--cherry-main); background: #ffffff; box-shadow: 0 8px 24px rgba(217, 4, 41, 0.15); transform: scale(1.02); } .badge-hit { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
+        .file-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; border: 2px dashed rgba(217, 4, 41, 0.4); border-radius: 20px; background: rgba(217, 4, 41, 0.02); cursor: pointer; position: relative; transition: 0.2s; } 
+        .file-upload:hover { background: rgba(217, 4, 41, 0.05); } 
+        .file-upload input { position: absolute; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 2; } 
+        .upload-icon { font-size: 2.2rem; margin-bottom: 8px; color: var(--text-dark); opacity: 0.6; } 
+        .upload-title { font-size: 0.95rem; font-weight: 700; color: var(--text-dark); text-align: center; }
         
-        .checkout-block { position: sticky; bottom: -28px; background: var(--panel-bg); margin: 10px -28px -28px; padding: 20px 28px 28px; border-top: 1px solid rgba(0,0,0,0.05); backdrop-filter: blur(24px); z-index: 20; } .price-display { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.05); } .p-label { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); } .p-value { font-size: 2.2rem; font-weight: 800; } .input-group input { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 10px; font-family: 'Inter', sans-serif; outline: none; } .btn-submit { width: 100%; background: var(--btn-green); color: white; border: none; padding: 18px; border-radius: 18px; font-size: 1.1rem; font-weight: 800; cursor: pointer; display: flex; justify-content: center; gap: 10px; } .trust-badge { text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 12px; font-weight: 600; }
-        #cherry-toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; } .cherry-toast { background: rgba(255,255,255,0.95); border-left: 4px solid var(--cherry-main); padding: 16px 24px; border-radius: 12px; font-weight: 600; transform: translateX(120%); transition: 0.4s; display: flex; gap: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); } .cherry-toast.show { transform: translateX(0); }
+        .image-preview-container { display: none; width: 100%; align-items: center; gap: 16px; pointer-events: none; } 
+        .image-preview-container img { width: 64px; height: 64px; object-fit: cover; border-radius: 16px; border: 2px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); } 
+        .preview-info { display: flex; flex-direction: column; } 
+        .preview-info .file-name { font-size: 0.9rem; font-weight: 700; display: block; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; } 
+        .preview-info .change-text { font-size: 0.8rem; color: var(--cherry-main); font-weight: 700; text-decoration: underline; pointer-events: auto; cursor: pointer; }
         
-        /* МОБІЛЬНА ВЕРСТКА */
+        .size-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } 
+        .size-tile { position: relative; display: flex; flex-direction: column; align-items: center; padding: 14px 10px; background: rgba(0,0,0,0.02); border-radius: 16px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; } 
+        .size-tile:hover { background: rgba(0,0,0,0.04); } 
+        .size-tile input { display: none; } 
+        .size-tile .st-size { font-weight: 800; font-size: 0.95rem; } 
+        .size-tile .st-price { font-weight: 600; font-size: 0.75rem; color: var(--text-muted); } 
+        .size-tile.active { border-color: var(--cherry-main); background: #ffffff; box-shadow: 0 8px 24px rgba(217, 4, 41, 0.15); transform: scale(1.02); } 
+        .badge-hit { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 800; padding: 3px 6px; border-radius: 8px; }
+        
+        .checkout-block { position: sticky; bottom: -28px; background: var(--panel-bg); margin: 10px -28px -28px; padding: 20px 28px 28px; border-top: 1px solid rgba(0,0,0,0.05); backdrop-filter: blur(24px); z-index: 20; } 
+        .price-display { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid rgba(0,0,0,0.05); } 
+        .p-label { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); } 
+        .p-value { font-size: 2.2rem; font-weight: 800; } 
+        .input-group input { width: 100%; padding: 14px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.1); margin-bottom: 10px; font-family: 'Inter', sans-serif; outline: none; transition: 0.2s; } 
+        .input-group input:focus { border-color: var(--cherry-main); box-shadow: 0 0 0 3px rgba(217, 4, 41, 0.1); } 
+        .btn-submit { width: 100%; background: var(--btn-green); color: white; border: none; padding: 18px; border-radius: 18px; font-size: 1.1rem; font-weight: 800; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px; transition: 0.2s; } 
+        .btn-submit:hover { background: #0ea5e9; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3); } 
+        .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; } 
+        .trust-badge { text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 12px; font-weight: 600; }
+        
+        #cherry-toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; } 
+        .cherry-toast { background: rgba(255,255,255,0.98); border-left: 4px solid var(--cherry-main); padding: 16px 24px; border-radius: 12px; font-weight: 600; transform: translateX(120%); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); } 
+        .cherry-toast.show { transform: translateX(0); }
+        
         @media (max-width: 768px) { 
             .brand-logo { font-size: 1.2rem; }
             .btn-ar { display: flex !important; }
+            
             #ARButton, .btn-ar { 
-                top: 16px !important; left: 16px !important; right: auto !important; width: max-content !important; min-width: 130px !important; white-space: nowrap !important;
-                padding: 8px 16px !important; font-size: 0.75rem !important; display: flex !important; justify-content: center !important; align-items: center !important;
+                top: 10px !important; left: 10px !important; right: auto !important; width: max-content !important; min-width: 100px !important; white-space: nowrap !important;
+                padding: 6px 12px !important; font-size: 0.7rem !important; display: flex !important; justify-content: center !important; align-items: center !important;
             }
+
             .hint-360 { top: 16px; right: 16px; padding: 8px 14px; font-size: 0.75rem;} 
-            #captain-container { width: 180px; height: 25vh; bottom: 80px; right: 0; } #captain-ui-wrapper { top: 70px; right: 10px; bottom: auto; } #captain-chat-panel { width: 280px; } 
-            .ui-panel { width: 100%; top: auto; bottom: 0; left: 0; border-radius: 36px 36px 0 0; height: 55dvh; } 
+            
+            /* ФІКС: Менший Капітан, не перекриває екран */
+            #captain-container { width: 140px !important; height: 30vh !important; bottom: 85px !important; right: 5px !important; } 
+            #captain-bubble-box { max-width: 180px !important; font-size: 11px !important; padding: 6px 10px !important; }
+            
+            /* ФІКС: Чат-панель адаптивна */
+            #captain-ui-wrapper { top: 60px; right: 10px; bottom: auto; z-index: 105; } 
+            #captain-chat-panel { width: calc(100vw - 20px); max-width: 320px; right: 0; } 
+            
+            #callback-btn { bottom: 10px; left: 10px; padding: 10px 16px; font-size: 0.75rem; z-index: 101; }
+            
+            /* ФІКС: Панель нижча, щоб було видно 3D */
+            .ui-panel { width: 100%; top: auto; bottom: 0; left: 0; border-radius: 36px 36px 0 0; height: 50dvh; } 
             .ui-panel.expanded { height: 85dvh; } 
             .mobile-handle { display: block; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 40px; height: 5px; background: rgba(0,0,0,0.2); border-radius: 5px; } 
+            
             .ui-panel-scroll { padding-bottom: 240px !important; } 
             .checkout-block { margin: 10px -20px 0; padding: 16px 20px 20px; bottom: 0; } 
-            .p-value { font-size: 1.8rem; }
+            
+            .file-upload { padding: 12px 10px !important; }
+            .upload-icon { font-size: 1.5rem !important; margin-bottom: 4px !important; }
+            .upload-title { font-size: 0.8rem !important; }
+            
+            .p-value { font-size: 1.6rem; }
             .btn-submit { padding: 14px; font-size: 1rem; }
         }
     </style>
@@ -60,28 +177,65 @@
 
     <div id="cherry-app-wrapper">
         <div id="cherry-loader"><div class="spinner"></div><div class="loader-text">Cherry Design: Premium 3D Canvas...</div></div>
+        
         <div id="viewport-3d"></div>
-        <div id="captain-container"><div id="captain-3d-view"></div><div id="captain-bubble-box"><span id="captain-bubble-text">...</span><span class="bubble-dots" id="bubble-dots">●●●</span><div class="tail"></div></div></div>
-        <div id="captain-ui-wrapper">
-            <div id="captain-toggle-btn">💬 Чат з Капітаном</div>
-            <div id="captain-chat-panel"><div id="captain-chat-history"></div><div class="chat-controls"><input type="text" id="ai-input" placeholder="Запитайте щось..."><button id="ai-send-btn">➤</button><button id="ai-mic-btn" class="btn-mic">🎤</button></div></div>
+        
+        <div id="captain-container">
+            <div id="captain-3d-view"></div>
+            <div id="captain-bubble-box">
+                <span id="captain-bubble-text">...</span>
+                <span class="bubble-dots" id="bubble-dots">●●●</span>
+                <div class="tail"></div>
+            </div>
         </div>
+        
+        <div id="captain-ui-wrapper">
+            <div id="captain-toggle-btn">💬 Чат з Арт-директором</div>
+            <div id="captain-chat-panel">
+                <div id="captain-chat-history"></div>
+                <div class="chat-controls">
+                    <input type="text" id="ai-input" placeholder="Запитайте про друк...">
+                    <button id="ai-send-btn">➤</button>
+                    <button id="ai-mic-btn" class="btn-mic">🎤</button>
+                </div>
+            </div>
+        </div>
+        
         <a id="mainArButton" class="btn-ar" style="display: none;"><span class="ar-icon">👁️</span> <span>В кімнаті (AR)</span></a>
         <div class="hint-360"><span>✨</span> Покрутіть картину</div>
+        <a id="callback-btn"><span class="cb-icon">📞</span><span>Замовити дзвінок</span></a>
         
         <div class="ui-panel" id="uiPanel">
-            <div class="ui-header" id="uiDragHandle"><div class="mobile-handle"></div><div class="brand-logo">🍒 Cherry Design</div></div>
+            <div class="ui-header" id="uiDragHandle">
+                <div class="mobile-handle"></div>
+                <div class="brand-logo">🍒 Cherry Design</div>
+            </div>
             <div class="ui-panel-scroll">
                 <div class="card-block file-upload" id="uploadDropzone">
-                    <div class="upload-content" id="uploadContent"><div class="upload-icon">📷</div><span class="upload-title">Завантажити фотографію</span></div>
-                    <div class="image-preview-container" id="imagePreviewContainer"><img id="previewImage" src=""><div class="preview-info"><span class="file-name" id="fileName">photo.jpg</span><span class="change-text" id="changePhotoBtn">Замінити фото</span></div></div>
+                    <div class="upload-content" id="uploadContent">
+                        <div class="upload-icon">📷</div>
+                        <span class="upload-title">Завантажити фотографію</span>
+                    </div>
+                    <div class="image-preview-container" id="imagePreviewContainer">
+                        <img id="previewImage" src="">
+                        <div class="preview-info">
+                            <span class="file-name" id="fileName">photo.jpg</span>
+                            <span class="change-text" id="changePhotoBtn">Замінити фото</span>
+                        </div>
+                    </div>
                     <input type="file" id="imageInput" accept="image/png, image/jpeg, image/webp">
                 </div>
-                <div class="card-block" style="border: none; box-shadow: none; background: transparent; padding: 0 10px;"><div class="size-options" id="sizeOptionsContainer"></div></div>
+                
+                <div class="card-block" style="border: none; box-shadow: none; background: transparent; padding: 0 10px;">
+                    <div class="size-options" id="sizeOptionsContainer"></div>
+                </div>
                 
                 <div class="checkout-block">
-                    <div class="price-display"><span class="p-label">Разом до сплати:</span><span class="p-value"><span id="priceValue">0</span> ₴</span></div>
-                    <div class="input-group"><input type="text" id="customerName" placeholder="Ім'я"></div>
+                    <div class="price-display">
+                        <span class="p-label">Разом до сплати:</span>
+                        <span class="p-value"><span id="priceValue">0</span> ₴</span>
+                    </div>
+                    <div class="input-group"><input type="text" id="customerName" placeholder="Ваше Ім'я"></div>
                     <div class="input-group"><input type="tel" id="customerPhone" placeholder="Телефон"></div>
                     <button class="btn-submit" id="orderButton">🚀 Замовити друк</button>
                     <div class="trust-badge">🛡️ Оплата після огляду (без передплати)</div>
@@ -92,7 +246,14 @@
     
     <div id="cherry-toast-container"></div>
 
-    <script type="importmap">{"imports": {"three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -111,35 +272,55 @@
         const EXACT_PRICES = { "20x20": 249, "30x20": 329, "20x30": 329, "30x30": 399, "40x30": 479, "30x40": 479, "60x20": 499, "20x60": 499, "50x40": 599, "40x50": 599, "50x50": 649, "60x40": 699, "40x60": 699, "90x30": 799, "30x90": 799, "70x50": 899, "50x70": 899, "80x60": 1199, "60x80": 1199 };
 
         function showToast(message, type = 'success') {
-            const container = document.getElementById('cherry-toast-container'); const toast = document.createElement('div'); toast.className = `cherry-toast ${type}`;
-            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${message}</span>`; container.appendChild(toast);
-            requestAnimationFrame(() => toast.classList.add('show')); setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3500);
+            const container = document.getElementById('cherry-toast-container'); 
+            const toast = document.createElement('div'); 
+            toast.className = `cherry-toast ${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${message}</span>`; 
+            container.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show')); 
+            setTimeout(() => { 
+                toast.classList.remove('show'); 
+                setTimeout(() => toast.remove(), 400); 
+            }, 3500);
         }
 
-        const clock = new THREE.Clock(); const VERCEL_API = 'https://project-6phnz.vercel.app/api/chat';
-        let scene, camera, renderer, controls, particleSystem, confetti; let currentCanvasGroup = null, currentTexture = null;
+        const clock = new THREE.Clock(); 
+        const VERCEL_API = 'https://project-6phnz.vercel.app/api/chat';
+        
+        let scene, camera, renderer, controls, particleSystem, premiumSparks; 
+        let currentCanvasGroup = null, currentTexture = null;
         let currentWidthCm = 40, currentHeightCm = 30;
         let hitTestSource = null, hitTestSourceRequested = false, reticle, xrController;
+        
         let capScene, capCamera, capRenderer, capMixer, capModel, capBones = {};
         let artSpotlight, backLight; 
+        let actionIdle, actionDance;
         
         let isTalking = false; 
         let isAIProcessing = false; 
         let mousePos = { x: 0, y: 0 };
+        let currentCaptainAudio = null; 
         
         let currentImageBase64 = null;
-        let confettiTime = 0;
+        let sparksTime = 0;
         
         let hasInteracted = false;
         let hasStartedRotating = false;
         let hasLookedAtBack = false;
         let phoneFocused = false;
 
-        const container = document.getElementById('viewport-3d'); const capContainerView = document.getElementById('captain-3d-view');
-        const bubble = document.getElementById('captain-bubble-box'); const bubbleText = document.getElementById('captain-bubble-text'); const bubbleDots = document.getElementById('bubble-dots');
-        const chatHistory = document.getElementById('captain-chat-history'); const loader = document.getElementById('cherry-loader'); const uiPanel = document.getElementById('uiPanel');
+        const container = document.getElementById('viewport-3d'); 
+        const capContainerView = document.getElementById('captain-3d-view');
+        const bubble = document.getElementById('captain-bubble-box'); 
+        const bubbleText = document.getElementById('captain-bubble-text'); 
+        const bubbleDots = document.getElementById('bubble-dots');
+        const chatHistory = document.getElementById('captain-chat-history'); 
+        const loader = document.getElementById('cherry-loader'); 
+        const uiPanel = document.getElementById('uiPanel');
         const mainArButton = document.getElementById('mainArButton');
-        const texLoader = new THREE.TextureLoader(); texLoader.setCrossOrigin('anonymous'); const woodLoader = new THREE.TextureLoader(); woodLoader.setCrossOrigin('anonymous');
+        
+        const texLoader = new THREE.TextureLoader(); texLoader.setCrossOrigin('anonymous'); 
+        const woodLoader = new THREE.TextureLoader(); woodLoader.setCrossOrigin('anonymous');
         
         initAll();
 
@@ -150,22 +331,26 @@
             document.getElementById('imageInput').addEventListener('change', handleImageUpload);
             document.getElementById('uiDragHandle').addEventListener('click', () => { if (window.innerWidth <= 768) uiPanel.classList.toggle('expanded'); });
             
+            document.getElementById('callback-btn').addEventListener('click', initiateCallback);
+            
             const startHandler = () => {
                 if (!hasInteracted) {
                     hasInteracted = true;
-                    captainSpeak("Привіт! Я експерт Cherry Design. Завантажте фото, і ми створимо глянцевий шедевр!");
+                    // КОРОТКО ТА ПО СУТІ
+                    captainSpeak("Вітаю! Завантажте фото, зробимо шедевр.");
                     window.removeEventListener('click', startHandler);
                     window.removeEventListener('touchstart', startHandler);
                 }
             };
             window.addEventListener('click', startHandler);
             window.addEventListener('touchstart', startHandler);
-
             window.addEventListener('mousemove', e => { mousePos.x = (e.clientX / window.innerWidth) * 2 - 1; mousePos.y = -(e.clientY / window.innerHeight) * 2 + 1; });
         }
 
         function initMainScene() {
-            scene = new THREE.Scene(); camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.1, 100); camera.position.set(1, 0.2, 2);
+            scene = new THREE.Scene(); 
+            camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.1, 100); 
+            camera.position.set(1, 0.2, 2);
             
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" }); 
             renderer.setSize(container.clientWidth || 100, container.clientHeight || 100); 
@@ -180,34 +365,41 @@
             
             renderer.toneMapping = THREE.ACESFilmicToneMapping; 
             renderer.toneMappingExposure = 1.1; 
-            renderer.xr.enabled = true; container.appendChild(renderer.domElement);
+            renderer.xr.enabled = true; 
+            container.appendChild(renderer.domElement);
             
-            controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.dampingFactor = 0.05; controls.maxPolarAngle = Math.PI / 2 + 0.1; controls.autoRotate = true; controls.autoRotateSpeed = 0.5; controls.enablePan = false; 
+            controls = new OrbitControls(camera, renderer.domElement); 
+            controls.enableDamping = true; controls.dampingFactor = 0.05; 
+            controls.maxPolarAngle = Math.PI / 2 + 0.1; 
+            controls.autoRotate = true; controls.autoRotateSpeed = 0.5; controls.enablePan = false; 
             
             const pmremGenerator = new THREE.PMREMGenerator(renderer);
             scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
             
             scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.5)); 
             
-            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8); mainLight.position.set(2, 5, 4); mainLight.castShadow = true; mainLight.shadow.mapSize.width = 1024; mainLight.shadow.mapSize.height = 1024; 
-            mainLight.shadow.camera.top = 2; mainLight.shadow.camera.bottom = -2; mainLight.shadow.camera.left = -2; mainLight.shadow.camera.right = 2; scene.add(mainLight);
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8); 
+            mainLight.position.set(2, 5, 4); mainLight.castShadow = true; 
+            mainLight.shadow.mapSize.width = 1024; mainLight.shadow.mapSize.height = 1024; 
+            mainLight.shadow.camera.top = 2; mainLight.shadow.camera.bottom = -2; 
+            mainLight.shadow.camera.left = -2; mainLight.shadow.camera.right = 2; 
+            scene.add(mainLight);
 
-            artSpotlight = new THREE.SpotLight(0xffffff, 2.5); 
+            artSpotlight = new THREE.SpotLight(0xffffff, 2.0); 
             artSpotlight.position.set(0, 3, 5); 
-            artSpotlight.angle = Math.PI / 12; 
-            artSpotlight.penumbra = 0.3; 
+            artSpotlight.angle = Math.PI / 8; 
+            artSpotlight.penumbra = 0.5; 
             artSpotlight.decay = 1; 
             artSpotlight.distance = 15;
             artSpotlight.target.position.set(0, 0, 0); 
             scene.add(artSpotlight);
             scene.add(artSpotlight.target);
 
-            // ФІКС 2: Додаткове потужне світло, щоб задник не губився в тіні
-            backLight = new THREE.DirectionalLight(0xffeedd, 2.0); 
+            backLight = new THREE.DirectionalLight(0xffeedd, 1.5); 
             backLight.position.set(-2, 2, -4); 
             scene.add(backLight);
 
-            const floorShadow = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.ShadowMaterial({ opacity: 0.05 })); 
+            const floorShadow = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.ShadowMaterial({ opacity: 0.04 })); 
             floorShadow.rotation.x = -Math.PI / 2;
             floorShadow.position.y = -0.5; 
             floorShadow.receiveShadow = true; 
@@ -215,38 +407,72 @@
             scene.add(floorShadow);
 
             createMagicDust();
-            initARHitTest(); setupARButton();
+            initARHitTest(); 
+            setupARButton();
 
             renderer.setAnimationLoop((timestamp, frame) => { 
                 const delta = clock.getDelta(); const t = clock.getElapsedTime(); 
                 if (!renderer.xr.isPresenting) { controls.update(); } 
                 else if (frame) {
                     const session = renderer.xr.getSession(); const referenceSpace = renderer.xr.getReferenceSpace();
-                    if (hitTestSourceRequested === false) { session.requestReferenceSpace('viewer').then((refSpaceViewer) => { session.requestHitTestSource({ space: refSpaceViewer }).then((source) => { hitTestSource = source; }); }); session.addEventListener('end', () => { hitTestSourceRequested = false; hitTestSource = null; }); hitTestSourceRequested = true; }
-                    if (hitTestSource) { const hitTestResults = frame.getHitTestResults(hitTestSource); if (hitTestResults.length > 0) { const pose = hitTestResults[0].getPose(referenceSpace); reticle.visible = true; reticle.matrix.fromArray(pose.transform.matrix); } else { reticle.visible = false; } }
+                    if (hitTestSourceRequested === false) { 
+                        session.requestReferenceSpace('viewer').then((refSpaceViewer) => { 
+                            session.requestHitTestSource({ space: refSpaceViewer }).then((source) => { hitTestSource = source; }); 
+                        }); 
+                        session.addEventListener('end', () => { hitTestSourceRequested = false; hitTestSource = null; }); 
+                        hitTestSourceRequested = true; 
+                    }
+                    if (hitTestSource) { 
+                        const hitTestResults = frame.getHitTestResults(hitTestSource); 
+                        if (hitTestResults.length > 0) { 
+                            const pose = hitTestResults[0].getPose(referenceSpace); 
+                            reticle.visible = true; 
+                            reticle.matrix.fromArray(pose.transform.matrix); 
+                        } else { 
+                            reticle.visible = false; 
+                        } 
+                    }
                 }
                 
                 if(particleSystem) particleSystem.rotation.y += 0.0005; 
                 
-                if(confetti && confetti.visible) {
-                    confettiTime += delta;
-                    const posArray = confetti.geometry.attributes.position.array;
-                    for(let i=0; i < confetti.geometry.attributes.position.count; i++) {
-                        posArray[i*3+1] -= (0.01 + Math.random()*0.01); 
-                        posArray[i*3] *= 1.005; 
-                        posArray[i*3+2] *= 1.005;
-                        if(posArray[i*3+1] < -1) posArray[i*3+1] = 1; 
+                if(premiumSparks && premiumSparks.visible && premiumSparks.geometry && premiumSparks.geometry.attributes.position) {
+                    sparksTime += delta;
+                    const posArray = premiumSparks.geometry.attributes.position.array;
+                    for(let i=0; i < premiumSparks.geometry.attributes.position.count; i++) {
+                        posArray[i*3+1] += (0.005 + Math.random()*0.005); 
+                        posArray[i*3] += Math.sin(t + i) * 0.002; 
                     }
-                    confetti.geometry.attributes.position.needsUpdate = true;
-                    if(confettiTime > 3) {
-                        confetti.visible = false;
-                        confettiTime = 0;
+                    premiumSparks.geometry.attributes.position.needsUpdate = true;
+                    premiumSparks.material.opacity = Math.max(0, 1 - (sparksTime / 4)); 
+                    if(sparksTime > 4) {
+                        premiumSparks.visible = false;
+                        sparksTime = 0;
                     }
                 }
 
                 renderer.render(scene, camera); 
                 
-                if (capModel && capMixer && !renderer.xr.isPresenting) { capMixer.update(delta); capModel.position.y = capModel.userData.baseY + (0.002 * Math.sin(t * 0.8)); if (capBones.head) { capBones.head.rotation.y = THREE.MathUtils.lerp(capBones.head.rotation.y, mousePos.x * 0.45, 0.1); capBones.head.rotation.x = THREE.MathUtils.lerp(capBones.head.rotation.x, mousePos.y * -0.12, 0.1); } if (capBones.jaw) capBones.jaw.rotation.x = isTalking ? Math.abs(Math.sin(t * 15)) * 0.28 : THREE.MathUtils.lerp(capBones.jaw.rotation.x, 0, 0.1); updateCaptainBubble(); capRenderer.render(capScene, capCamera); }
+                if (capModel && capMixer && !renderer.xr.isPresenting) { 
+                    try {
+                        capMixer.update(delta); 
+                        capModel.position.y = capModel.userData.baseY + (0.002 * Math.sin(t * 0.8)); 
+                        
+                        if (capBones.head) { 
+                            capBones.head.rotation.y = THREE.MathUtils.lerp(capBones.head.rotation.y, mousePos.x * 0.45, 0.1); 
+                            capBones.head.rotation.x = THREE.MathUtils.lerp(capBones.head.rotation.x, mousePos.y * -0.12, 0.1); 
+                        } 
+                        
+                        if (capBones.jaw) { 
+                            const jawTarget = isTalking ? (Math.sin(t * 15) * 0.5 + 0.5) * 0.25 : 0;
+                            capBones.jaw.rotation.x = THREE.MathUtils.lerp(capBones.jaw.rotation.x, jawTarget, 0.3); 
+                            capBones.jaw.rotation.z = THREE.MathUtils.lerp(capBones.jaw.rotation.z, jawTarget * 0.5, 0.3); 
+                        } 
+                        
+                        updateCaptainBubble(); 
+                        capRenderer.render(capScene, capCamera);
+                    } catch(e) { }
+                }
             });
         }
 
@@ -254,27 +480,27 @@
             controls.addEventListener('start', () => {
                 if (!hasStartedRotating && currentTexture && document.getElementById('imageInput').files.length > 0) {
                     hasStartedRotating = true;
-                    sendToVercel("Клієнт вперше почав крутити 3D модель нашої картини. Зверни його увагу на галерейну натяжку та солідну дерев'яну раму.");
+                    sendToVercel("Скажи 1 коротке мотивуюче речення про якість матеріалів.");
                 }
             });
 
             controls.addEventListener('end', () => {
                 if (camera.position.z < 0 && !hasLookedAtBack && currentTexture && hasStartedRotating) {
                     hasLookedAtBack = true;
-                    setTimeout(() => { sendToVercel("Клієнт щойно подивився на підрамник ззаду. Похвали якість нашої дерев'яної збірки та соковиту текстуру полотна."); }, 500);
+                    setTimeout(() => { sendToVercel("Похвали галерейну натяжку 1 коротким реченням."); }, 500);
                 }
             });
 
             document.getElementById('customerPhone').addEventListener('focus', () => {
                 if (!phoneFocused && currentTexture && document.getElementById('imageInput').files.length > 0) {
                     phoneFocused = true;
-                    sendToVercel("Клієнт готовий замовити і вводить телефон. Коротко запевни, що оплата тільки після огляду, і ми гарантуємо якість.");
+                    sendToVercel("Клієнт вводить телефон. Запевни 1 коротким реченням: якість гарантована.");
                 }
             });
 
             document.addEventListener("visibilitychange", () => {
                 if (document.visibilityState === "visible" && currentImageBase64) {
-                    setTimeout(() => { sendToVercel("Клієнт повернувся на сайт. Тепло привітай з поверненням."); }, 1500);
+                    setTimeout(() => { sendToVercel("Привітай клієнта з поверненням 1 коротким реченням."); }, 1500);
                 }
             });
         }
@@ -304,47 +530,70 @@
             const uW = w / totalW; const uH = h / totalH; const uWrapX = WRAP / totalW; const uWrapY = WRAP / totalH;
             const uThickX = FRAME_THICKNESS / totalW; const uThickY = FRAME_THICKNESS / totalH; const uBackX = BACK_PRINT / totalW; const uBackY = BACK_PRINT / totalH;
             const imgAspect = texture.image.width / texture.image.height; const canvasAspect = totalW / totalH;
+            
             let scaleX = 1, scaleY = 1, offsetX = 0, offsetY = 0;
             if (imgAspect > canvasAspect) { scaleX = canvasAspect / imgAspect; offsetX = (1 - scaleX) / 2; } else { scaleY = imgAspect / canvasAspect; offsetY = (1 - scaleY) / 2; }
             function createCroppedTex(tex, rw, rh, ox, oy) { const t = tex.clone(); t.repeat.set(rw * scaleX, rh * scaleY); t.offset.set(offsetX + ox * scaleX, offsetY + oy * scaleY); t.needsUpdate = true; return t; }
 
-            const frontTex = createCroppedTex(texture, uW, uH, uWrapX, uWrapY); const rightTex = createCroppedTex(texture, uThickX, uH, uWrapX + uW, uWrapY); const leftTex = createCroppedTex(texture, uThickX, uH, 0, uWrapY); const topTex = createCroppedTex(texture, uW, uThickY, uWrapX, uWrapY + uH); const bottomTex = createCroppedTex(texture, uW, uThickY, uWrapX, 0); const backRightTex = createCroppedTex(texture, uBackX, uH, uWrapX + uW + uThickX, uWrapY); const backLeftTex = createCroppedTex(texture, uBackX, uH, uWrapX - uThickX - uBackX, uWrapY); const backTopTex = createCroppedTex(texture, uW, uBackY, uWrapX, uWrapY + uH + uThickY); const backBottomTex = createCroppedTex(texture, uW, uBackY, uWrapX, uWrapY - uThickY - uBackY);
-            const canvasNormal = texLoader.load('https://cherrydesign.shop/wp-content/uploads/canvas_normal.jpg'); canvasNormal.wrapS = canvasNormal.wrapT = THREE.RepeatWrapping; const WEAVE = 25; 
+            const frontTex = createCroppedTex(texture, uW, uH, uWrapX, uWrapY); 
+            const rightTex = createCroppedTex(texture, uThickX, uH, uWrapX + uW, uWrapY); 
+            const leftTex = createCroppedTex(texture, uThickX, uH, 0, uWrapY); 
+            const topTex = createCroppedTex(texture, uW, uThickY, uWrapX, uWrapY + uH); 
+            const bottomTex = createCroppedTex(texture, uW, uThickY, uWrapX, 0); 
+            const backRightTex = createCroppedTex(texture, uBackX, uH, uWrapX + uW + uThickX, uWrapY); 
+            const backLeftTex = createCroppedTex(texture, uBackX, uH, uWrapX - uThickX - uBackX, uWrapY); 
+            const backTopTex = createCroppedTex(texture, uW, uBackY, uWrapX, uWrapY + uH + uThickY); 
+            const backBottomTex = createCroppedTex(texture, uW, uBackY, uWrapX, uWrapY - uThickY - uBackY);
+            
+            const canvasNormal = texLoader.load('https://cherrydesign.shop/wp-content/uploads/canvas_normal.jpg'); 
+            canvasNormal.wrapS = canvasNormal.wrapT = THREE.RepeatWrapping; 
+            const WEAVE = 25; 
             function cloneNorm(tex, rw, rh, ox, oy) { const t = tex.clone(); t.repeat.set(rw, rh); t.offset.set(ox, oy); t.needsUpdate = true; return t; }
             
-            const frontNormal = cloneNorm(canvasNormal, w * WEAVE, h * WEAVE, 0, 0); const sideYNormal = cloneNorm(canvasNormal, FRAME_THICKNESS * WEAVE, h * WEAVE, 0, 0); const sideXNormal = cloneNorm(canvasNormal, w * WEAVE, FRAME_THICKNESS * WEAVE, 0, 0); const backYNormal = cloneNorm(canvasNormal, BACK_PRINT * WEAVE, h * WEAVE, 0, 0); const backXNormal = cloneNorm(canvasNormal, w * WEAVE, BACK_PRINT * WEAVE, 0, 0); const whiteYNormal = cloneNorm(canvasNormal, BACK_WHITE * WEAVE, h * WEAVE, 0, 0); const whiteXNormal = cloneNorm(canvasNormal, w * WEAVE, BACK_WHITE * WEAVE, 0, 0);
+            const frontNormal = cloneNorm(canvasNormal, w * WEAVE, h * WEAVE, 0, 0); 
+            const sideYNormal = cloneNorm(canvasNormal, FRAME_THICKNESS * WEAVE, h * WEAVE, 0, 0); 
+            const sideXNormal = cloneNorm(canvasNormal, w * WEAVE, FRAME_THICKNESS * WEAVE, 0, 0); 
+            const backYNormal = cloneNorm(canvasNormal, BACK_PRINT * WEAVE, h * WEAVE, 0, 0); 
+            const backXNormal = cloneNorm(canvasNormal, w * WEAVE, BACK_PRINT * WEAVE, 0, 0); 
+            const whiteYNormal = cloneNorm(canvasNormal, BACK_WHITE * WEAVE, h * WEAVE, 0, 0); 
+            const whiteXNormal = cloneNorm(canvasNormal, w * WEAVE, BACK_WHITE * WEAVE, 0, 0);
 
             const nDepth = new THREE.Vector2(0.5, 0.5); 
             
             const matFront = new THREE.MeshPhysicalMaterial({ 
-                map: frontTex, normalMap: frontNormal, normalScale: nDepth, color: 0xffffff, roughness: 0.15, metalness: 0.05, side: THREE.FrontSide,
-                clearcoat: 1.0, clearcoatRoughness: 0.02, ior: 1.5, reflectivity: 0.5
+                map: frontTex, normalMap: frontNormal, normalScale: nDepth, color: 0xffffff, 
+                roughness: 0.35, metalness: 0.02, side: THREE.FrontSide,
+                clearcoat: 0.6, clearcoatRoughness: 0.1, ior: 1.4, reflectivity: 0.3
             }); 
             
             const cProps = { color: 0xffffff, roughness: 0.85, metalness: 0.05, side: THREE.FrontSide }; 
-            const matRight = new THREE.MeshStandardMaterial({ map: rightTex, normalMap: sideYNormal, normalScale: nDepth, ...cProps }); const matLeft = new THREE.MeshStandardMaterial({ map: leftTex, normalMap: sideYNormal, normalScale: nDepth, ...cProps }); const matTop = new THREE.MeshStandardMaterial({ map: topTex, normalMap: sideXNormal, normalScale: nDepth, ...cProps }); const matBottom = new THREE.MeshStandardMaterial({ map: bottomTex, normalMap: sideXNormal, normalScale: nDepth, ...cProps });
+            const matRight = new THREE.MeshStandardMaterial({ map: rightTex, normalMap: sideYNormal, normalScale: nDepth, ...cProps }); 
+            const matLeft = new THREE.MeshStandardMaterial({ map: leftTex, normalMap: sideYNormal, normalScale: nDepth, ...cProps }); 
+            const matTop = new THREE.MeshStandardMaterial({ map: topTex, normalMap: sideXNormal, normalScale: nDepth, ...cProps }); 
+            const matBottom = new THREE.MeshStandardMaterial({ map: bottomTex, normalMap: sideXNormal, normalScale: nDepth, ...cProps });
             
-            const canvasGeo = new RoundedBoxGeometry(w, h, FRAME_THICKNESS, 4, 0.002); const canvasMesh = new THREE.Mesh(canvasGeo, [matRight, matLeft, matTop, matBottom, matFront, new THREE.MeshBasicMaterial({opacity:0, transparent:true})]); canvasMesh.position.z = -FRAME_THICKNESS / 2; canvasMesh.castShadow = true; currentCanvasGroup.add(canvasMesh);
+            const canvasGeo = new RoundedBoxGeometry(w, h, FRAME_THICKNESS, 4, 0.002); 
+            const canvasMesh = new THREE.Mesh(canvasGeo, [matRight, matLeft, matTop, matBottom, matFront, new THREE.MeshBasicMaterial({opacity:0, transparent:true})]); 
+            canvasMesh.position.z = -FRAME_THICKNESS / 2; canvasMesh.castShadow = true; 
+            currentCanvasGroup.add(canvasMesh);
 
-            // ФІКС 2 (Оновлений): Світлий задник з емісією, який ніколи не виглядає як сірий пластик
-            const rawCanvasColor = 0xf5f2eb; // Дуже світлий теплий кремовий
+            const rawCanvasColor = 0xf5f2eb; 
             const innerPlane = new THREE.Mesh(
                 new THREE.PlaneGeometry(w - 0.002, h - 0.002), 
-                new THREE.MeshStandardMaterial({ 
-                    color: rawCanvasColor, 
-                    roughness: 1.0, 
-                    emissive: rawCanvasColor, // Світиться своїм же кольором
-                    emissiveIntensity: 0.4,   // Завжди виглядає яскраво і чисто
-                    normalMap: frontNormal, 
-                    normalScale: new THREE.Vector2(0.4, 0.4), 
-                    side: THREE.BackSide 
-                })
+                new THREE.MeshStandardMaterial({ color: rawCanvasColor, roughness: 1.0, emissive: rawCanvasColor, emissiveIntensity: 0.4, normalMap: frontNormal, normalScale: new THREE.Vector2(0.4, 0.4), side: THREE.BackSide })
             ); 
             innerPlane.position.z = -0.002; currentCanvasGroup.add(innerPlane);
 
             const zPrintFold = -FRAME_THICKNESS; const zWhiteFold = -FRAME_THICKNESS - 0.0002; const zStaples = -FRAME_THICKNESS - 0.0006;
-            const mBR = new THREE.MeshStandardMaterial({ map: backRightTex, normalMap: backYNormal, normalScale: nDepth, ...cProps }); const mBL = new THREE.MeshStandardMaterial({ map: backLeftTex, normalMap: backYNormal, normalScale: nDepth, ...cProps }); const mBT = new THREE.MeshStandardMaterial({ map: backTopTex, normalMap: backXNormal, normalScale: nDepth, ...cProps }); const mBB = new THREE.MeshStandardMaterial({ map: backBottomTex, normalMap: backXNormal, normalScale: nDepth, ...cProps });
-            const pTop = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_PRINT), mBT); pTop.position.set(0, h/2 - BACK_PRINT/2, zPrintFold); pTop.rotation.x = Math.PI; currentCanvasGroup.add(pTop); const pBot = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_PRINT), mBB); pBot.position.set(0, -h/2 + BACK_PRINT/2, zPrintFold); pBot.rotation.x = Math.PI; currentCanvasGroup.add(pBot); const pRig = new THREE.Mesh(new THREE.PlaneGeometry(BACK_PRINT, h - 2*BACK_PRINT), mBR); pRig.position.set(w/2 - BACK_PRINT/2, 0, zPrintFold); pRig.rotation.y = Math.PI; currentCanvasGroup.add(pRig); const pLef = new THREE.Mesh(new THREE.PlaneGeometry(BACK_PRINT, h - 2*BACK_PRINT), mBL); pLef.position.set(-w/2 + BACK_PRINT/2, 0, zPrintFold); pLef.rotation.y = Math.PI; currentCanvasGroup.add(pLef);
+            const mBR = new THREE.MeshStandardMaterial({ map: backRightTex, normalMap: backYNormal, normalScale: nDepth, ...cProps }); 
+            const mBL = new THREE.MeshStandardMaterial({ map: backLeftTex, normalMap: backYNormal, normalScale: nDepth, ...cProps }); 
+            const mBT = new THREE.MeshStandardMaterial({ map: backTopTex, normalMap: backXNormal, normalScale: nDepth, ...cProps }); 
+            const mBB = new THREE.MeshStandardMaterial({ map: backBottomTex, normalMap: backXNormal, normalScale: nDepth, ...cProps });
+            
+            const pTop = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_PRINT), mBT); pTop.position.set(0, h/2 - BACK_PRINT/2, zPrintFold); pTop.rotation.x = Math.PI; currentCanvasGroup.add(pTop); 
+            const pBot = new THREE.Mesh(new THREE.PlaneGeometry(w, BACK_PRINT), mBB); pBot.position.set(0, -h/2 + BACK_PRINT/2, zPrintFold); pBot.rotation.x = Math.PI; currentCanvasGroup.add(pBot); 
+            const pRig = new THREE.Mesh(new THREE.PlaneGeometry(BACK_PRINT, h - 2*BACK_PRINT), mBR); pRig.position.set(w/2 - BACK_PRINT/2, 0, zPrintFold); pRig.rotation.y = Math.PI; currentCanvasGroup.add(pRig); 
+            const pLef = new THREE.Mesh(new THREE.PlaneGeometry(BACK_PRINT, h - 2*BACK_PRINT), mBL); pLef.position.set(-w/2 + BACK_PRINT/2, 0, zPrintFold); pLef.rotation.y = Math.PI; currentCanvasGroup.add(pLef);
 
             const mwProps = { normalMap: whiteXNormal, color: 0xffffff, roughness: 1.0, emissive: 0xffffff, emissiveIntensity: 0.3, side: THREE.BackSide };
             const mwT = new THREE.MeshStandardMaterial(mwProps); const mwR = new THREE.MeshStandardMaterial({ ...mwProps, normalMap: whiteYNormal });
@@ -354,128 +603,294 @@
             const wRig = new THREE.Mesh(new THREE.PlaneGeometry(BACK_WHITE, h - 2*BACK_PRINT - 2*BACK_WHITE), mwR); wRig.position.set(w/2 - BACK_PRINT - BACK_WHITE/2, 0, zWhiteFold);  currentCanvasGroup.add(wRig); 
             const wLef = new THREE.Mesh(new THREE.PlaneGeometry(BACK_WHITE, h - 2*BACK_PRINT - 2*BACK_WHITE), mwR); wLef.position.set(-w/2 + BACK_PRINT + BACK_WHITE/2, 0, zWhiteFold); currentCanvasGroup.add(wLef);
 
-            const gap = 0.002; const frameW = w - gap * 2; const frameH = h - gap * 2; const woodAlbedo = woodLoader.load('https://cherrydesign.shop/wp-content/uploads/pine_light_premium.jpg'); const woodNormal = woodLoader.load('https://cherrydesign.shop/wp-content/uploads/pine_light_premium_normal.jpg'); woodAlbedo.wrapS = woodAlbedo.wrapT = woodNormal.wrapS = woodNormal.wrapT = THREE.RepeatWrapping;
+            const gap = 0.002; const frameW = w - gap * 2; const frameH = h - gap * 2; 
+            const woodAlbedo = woodLoader.load('https://cherrydesign.shop/wp-content/uploads/pine_light_premium.jpg'); 
+            const woodNormal = woodLoader.load('https://cherrydesign.shop/wp-content/uploads/pine_light_premium_normal.jpg'); 
+            woodAlbedo.wrapS = woodAlbedo.wrapT = woodNormal.wrapS = woodNormal.wrapT = THREE.RepeatWrapping;
+            
             const woodMat = new THREE.MeshStandardMaterial({ color: 0xffeedd, roughness: 0.85, map: woodAlbedo, normalMap: woodNormal, normalScale: new THREE.Vector2(0.3, 0.3) });
-            function createPlank(length) { const shape = new THREE.Shape(); shape.moveTo(-length / 2, WOOD_WIDTH / 2); shape.lineTo(length / 2, WOOD_WIDTH / 2); shape.lineTo(length / 2 - WOOD_WIDTH, -WOOD_WIDTH / 2); shape.lineTo(-length / 2 + WOOD_WIDTH, -WOOD_WIDTH / 2); shape.lineTo(-length / 2, WOOD_WIDTH / 2); const geo = new THREE.ExtrudeGeometry(shape, { depth: FRAME_THICKNESS - gap * 2, bevelEnabled: true, bevelThickness: 0.0005, bevelSize: 0.0005, bevelSegments: 2 }); geo.center(); const matClone = woodMat.clone(); matClone.map = woodAlbedo.clone(); matClone.normalMap = woodNormal.clone(); matClone.map.repeat.set(length * 20, 4); matClone.normalMap.repeat.set(length * 20, 4); matClone.map.needsUpdate = matClone.normalMap.needsUpdate = true; return new THREE.Mesh(geo, matClone); }
-            const frameGroup = new THREE.Group(); const plT = createPlank(frameW); plT.position.set(0, frameH/2 - WOOD_WIDTH/2, 0); frameGroup.add(plT); const plB = createPlank(frameW); plB.rotation.z = Math.PI; plB.position.set(0, -frameH/2 + WOOD_WIDTH/2, 0); frameGroup.add(plB); const plL = createPlank(frameH); plL.rotation.z = Math.PI/2; plL.position.set(-frameW/2 + WOOD_WIDTH/2, 0, 0); frameGroup.add(plL); const plR = createPlank(frameH); plR.rotation.z = -Math.PI/2; plR.position.set(frameW/2 - WOOD_WIDTH/2, 0, 0); frameGroup.add(plR); frameGroup.position.z = -FRAME_THICKNESS / 2; currentCanvasGroup.add(frameGroup);
+            
+            function createPlank(length) { 
+                const shape = new THREE.Shape(); 
+                shape.moveTo(-length / 2, WOOD_WIDTH / 2); 
+                shape.lineTo(length / 2, WOOD_WIDTH / 2); 
+                shape.lineTo(length / 2 - WOOD_WIDTH, -WOOD_WIDTH / 2); 
+                shape.lineTo(-length / 2 + WOOD_WIDTH, -WOOD_WIDTH / 2); 
+                shape.lineTo(-length / 2, WOOD_WIDTH / 2); 
+                const geo = new THREE.ExtrudeGeometry(shape, { depth: FRAME_THICKNESS - gap * 2, bevelEnabled: true, bevelThickness: 0.0005, bevelSize: 0.0005, bevelSegments: 2 }); 
+                geo.center(); 
+                const matClone = woodMat.clone(); matClone.map = woodAlbedo.clone(); matClone.normalMap = woodNormal.clone(); 
+                matClone.map.repeat.set(length * 20, 4); matClone.normalMap.repeat.set(length * 20, 4); 
+                matClone.map.needsUpdate = matClone.normalMap.needsUpdate = true; 
+                return new THREE.Mesh(geo, matClone); 
+            }
+            
+            const frameGroup = new THREE.Group(); 
+            const plT = createPlank(frameW); plT.position.set(0, frameH/2 - WOOD_WIDTH/2, 0); frameGroup.add(plT); 
+            const plB = createPlank(frameW); plB.rotation.z = Math.PI; plB.position.set(0, -frameH/2 + WOOD_WIDTH/2, 0); frameGroup.add(plB); 
+            const plL = createPlank(frameH); plL.rotation.z = Math.PI/2; plL.position.set(-frameW/2 + WOOD_WIDTH/2, 0, 0); frameGroup.add(plL); 
+            const plR = createPlank(frameH); plR.rotation.z = -Math.PI/2; plR.position.set(frameW/2 - WOOD_WIDTH/2, 0, 0); frameGroup.add(plR); 
+            frameGroup.position.z = -FRAME_THICKNESS / 2; currentCanvasGroup.add(frameGroup);
 
-            const stapleGeo = new THREE.BoxGeometry(0.008, 0.0008, 0.001); const stapleMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.2 }); 
-            function addStaple(x, y, isVert) { const s = new THREE.Mesh(stapleGeo, stapleMat); s.position.set(x, y, zStaples - 0.001 - (Math.random()*0.0005)); s.rotation.z = (isVert ? Math.PI/2 : 0) + ((Math.random()-0.5)*0.15); currentCanvasGroup.add(s); }
+            const stapleGeo = new THREE.BoxGeometry(0.008, 0.0008, 0.001); 
+            const stapleMat = new THREE.MeshStandardMaterial({ color: 0xe0e0e0, metalness: 0.9, roughness: 0.2 }); 
+            function addStaple(x, y, isVert) { 
+                const s = new THREE.Mesh(stapleGeo, stapleMat); 
+                s.position.set(x, y, zStaples - 0.001 - (Math.random()*0.0005)); 
+                s.rotation.z = (isVert ? Math.PI/2 : 0) + ((Math.random()-0.5)*0.15); 
+                currentCanvasGroup.add(s); 
+            }
+            
             const step = 0.05; const wTY = h/2 - BACK_PRINT - BACK_WHITE/2; const wRX = w/2 - BACK_PRINT - BACK_WHITE/2;
             for (let px = -w/2 + 0.05; px <= w/2 - 0.05 + 0.001; px += step) { addStaple(px + (Math.random()-0.5)*0.01, wTY, false); addStaple(px + (Math.random()-0.5)*0.01, -wTY, false); }
             for (let py = -h/2 + 0.05; py <= h/2 - 0.05 + 0.001; py += step) { addStaple(wRX, py + (Math.random()-0.5)*0.01, true); addStaple(-wRX, py + (Math.random()-0.5)*0.01, true); }
-            scene.add(currentCanvasGroup); 
             
+            scene.add(currentCanvasGroup); 
             renderer.shadowMap.needsUpdate = true; 
         }
 
         function initARHitTest() {
-            const reticleGeo = new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2); reticle = new THREE.Mesh(reticleGeo, new THREE.MeshBasicMaterial({ color: 0x10b981 }));
+            const reticleGeo = new THREE.RingGeometry(0.1, 0.12, 32).rotateX(-Math.PI / 2); 
+            reticle = new THREE.Mesh(reticleGeo, new THREE.MeshBasicMaterial({ color: 0x10b981 }));
             reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
             xrController = renderer.xr.getController(0);
-            xrController.addEventListener('select', () => { if (reticle.visible && currentCanvasGroup) { currentCanvasGroup.position.setFromMatrixPosition(reticle.matrix); currentCanvasGroup.quaternion.setFromRotationMatrix(reticle.matrix); currentCanvasGroup.rotateX(Math.PI / 2); currentCanvasGroup.visible = true; }});
+            xrController.addEventListener('select', () => { 
+                if (reticle.visible && currentCanvasGroup) { 
+                    currentCanvasGroup.position.setFromMatrixPosition(reticle.matrix); 
+                    currentCanvasGroup.quaternion.setFromRotationMatrix(reticle.matrix); 
+                    currentCanvasGroup.rotateX(Math.PI / 2); currentCanvasGroup.visible = true; 
+                }
+            });
             scene.add(xrController);
         }
 
         function setupARButton() {
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            if (isIOS) { mainArButton.style.display = 'flex'; mainArButton.addEventListener('click', async (e) => { e.preventDefault(); if (!currentCanvasGroup) return; const exporter = new USDZExporter(); const exportGroup = new THREE.Group(); const modelToExport = currentCanvasGroup.clone(); modelToExport.position.set(0,0,0); exportGroup.add(modelToExport); loader.style.display = 'flex'; loader.style.opacity = '1'; try { const arraybuffer = await exporter.parse(exportGroup); const blob = new Blob([arraybuffer], { type: 'model/vnd.usdz+zip' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cherry_canvas.usdz'; a.rel = 'ar'; a.click(); } catch (err) { showToast("Помилка генерації AR", "error"); } finally { loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 300); }}); } else {
-                if ('xr' in navigator) { navigator.xr.isSessionSupported('immersive-ar').then((supported) => { if (supported) { const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }); arButton.innerHTML = '<span>👁️</span> В кімнаті (AR)'; arButton.className = 'btn-ar'; mainArButton.parentNode.insertBefore(arButton, mainArButton); renderer.xr.addEventListener('sessionstart', () => { uiPanel.style.display = 'none'; document.querySelector('.hint-360').style.display = 'none'; document.getElementById('captain-ui-wrapper').style.display = 'none'; if (currentCanvasGroup) currentCanvasGroup.visible = false; hitTestSourceRequested = false; hitTestSource = null;
-                    renderer.shadowMap.autoUpdate = true;
-                }); renderer.xr.addEventListener('sessionend', () => { uiPanel.style.display = 'flex'; document.querySelector('.hint-360').style.display = 'flex'; document.getElementById('captain-ui-wrapper').style.display = 'flex'; if (currentCanvasGroup) { currentCanvasGroup.visible = true; currentCanvasGroup.position.set(0,0,0); currentCanvasGroup.rotation.set(0,0,0); resizeCanvas(); }
-                    renderer.shadowMap.autoUpdate = false;
-                    renderer.shadowMap.needsUpdate = true;
-                }); }}); }
+            if (isIOS) { 
+                mainArButton.style.display = 'flex'; 
+                mainArButton.addEventListener('click', async (e) => { 
+                    e.preventDefault(); 
+                    if (!currentCanvasGroup) return; 
+                    const exporter = new USDZExporter(); 
+                    const exportGroup = new THREE.Group(); 
+                    const modelToExport = currentCanvasGroup.clone(); 
+                    modelToExport.position.set(0,0,0); exportGroup.add(modelToExport); 
+                    loader.style.display = 'flex'; loader.style.opacity = '1'; 
+                    try { 
+                        const arraybuffer = await exporter.parse(exportGroup); 
+                        const blob = new Blob([arraybuffer], { type: 'model/vnd.usdz+zip' }); 
+                        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); 
+                        a.download = 'cherry_canvas.usdz'; a.rel = 'ar'; a.click(); 
+                    } catch (err) { 
+                        showToast("Помилка генерації AR", "error"); 
+                    } finally { 
+                        loader.style.opacity = '0'; setTimeout(() => loader.style.display = 'none', 300); 
+                    }
+                }); 
+            } else {
+                if ('xr' in navigator) { 
+                    navigator.xr.isSessionSupported('immersive-ar').then((supported) => { 
+                        if (supported) { 
+                            const arButton = ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] }); 
+                            arButton.innerHTML = '<span>👁️</span> В кімнаті (AR)'; arButton.className = 'btn-ar'; 
+                            mainArButton.parentNode.insertBefore(arButton, mainArButton); 
+                            
+                            renderer.xr.addEventListener('sessionstart', () => { 
+                                uiPanel.style.display = 'none'; 
+                                document.querySelector('.hint-360').style.display = 'none'; 
+                                document.getElementById('captain-ui-wrapper').style.display = 'none'; 
+                                if (currentCanvasGroup) currentCanvasGroup.visible = false; 
+                                hitTestSourceRequested = false; hitTestSource = null;
+                                renderer.shadowMap.autoUpdate = true;
+                            }); 
+                            
+                            renderer.xr.addEventListener('sessionend', () => { 
+                                uiPanel.style.display = 'flex'; 
+                                document.querySelector('.hint-360').style.display = 'flex'; 
+                                document.getElementById('captain-ui-wrapper').style.display = 'flex'; 
+                                if (currentCanvasGroup) { 
+                                    currentCanvasGroup.visible = true; 
+                                    currentCanvasGroup.position.set(0,0,0); 
+                                    currentCanvasGroup.rotation.set(0,0,0); 
+                                    resizeCanvas(); 
+                                }
+                                renderer.shadowMap.autoUpdate = false;
+                                renderer.shadowMap.needsUpdate = true;
+                            }); 
+                        }
+                    }); 
+                }
             }
         }
 
         function initCaptainScene() {
-            capScene = new THREE.Scene(); capCamera = new THREE.PerspectiveCamera(15, capContainerView.clientWidth / capContainerView.clientHeight, 0.1, 100); capCamera.position.set(0, 0.8, 5); capCamera.lookAt(0, 0.8, 0);
-            capScene.add(new THREE.AmbientLight(0xffffff, 1.2)); const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(5, 8, 5); capScene.add(sun);
+            capScene = new THREE.Scene(); 
+            capCamera = new THREE.PerspectiveCamera(15, capContainerView.clientWidth / capContainerView.clientHeight, 0.1, 100); 
+            capCamera.position.set(0, 0.8, 5); capCamera.lookAt(0, 0.8, 0);
+            capScene.add(new THREE.AmbientLight(0xffffff, 1.2)); 
+            const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(5, 8, 5); capScene.add(sun);
+            
             capRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" }); 
-            capRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); capRenderer.setSize(capContainerView.clientWidth || 100, capContainerView.clientHeight || 100); capRenderer.outputColorSpace = THREE.SRGBColorSpace; capContainerView.appendChild(capRenderer.domElement);
-            const draco = new DRACOLoader(); draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/'); const gltfLoader = new GLTFLoader(); gltfLoader.setDRACOLoader(draco);
+            capRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); 
+            capRenderer.setSize(capContainerView.clientWidth || 100, capContainerView.clientHeight || 100); 
+            capRenderer.outputColorSpace = THREE.SRGBColorSpace; 
+            capContainerView.appendChild(capRenderer.domElement);
+            
+            const draco = new DRACOLoader(); draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/'); 
+            const gltfLoader = new GLTFLoader(); gltfLoader.setDRACOLoader(draco);
             
             gltfLoader.load('https://cherrydesign.shop/wp-content/uploads/models/new.glb', (gltf) => {
-                capModel = gltf.scene; capModel.scale.setScalar(0.75); const box = new THREE.Box3().setFromObject(capModel); const center = new THREE.Vector3(); box.getCenter(center); capModel.position.x -= center.x; capModel.position.y -= box.min.y; capModel.userData.baseY = capModel.position.y;
-                capModel.traverse(c => { if (c.isBone) { if (c.name.includes('Head')) capBones.head = c; if (c.name.includes('JawRoot')) capBones.jaw = c; }});
-                const shadowCanvas = document.createElement('canvas'); shadowCanvas.width = shadowCanvas.height = 512; const ctx = shadowCanvas.getContext('2d'); const grad = ctx.createRadialGradient(256, 256, 25, 256, 256, 256); grad.addColorStop(0, 'rgba(0,0,0,0.8)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,512,512); const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, opacity: 0.6, depthWrite: false })); shadowMesh.rotation.x = -Math.PI/2; shadowMesh.position.y = 0.001; capScene.add(shadowMesh); capScene.add(capModel);
+                capModel = gltf.scene; 
+                
+                // ЗМЕНШЕНИЙ МАСШТАБ
+                const targetScale = window.innerWidth > 768 ? 0.7 : 0.5;
+                capModel.scale.setScalar(targetScale); 
+                
+                const box = new THREE.Box3().setFromObject(capModel); const center = new THREE.Vector3(); 
+                box.getCenter(center); capModel.position.x -= center.x; capModel.position.y -= box.min.y; 
+                capModel.userData.baseY = capModel.position.y;
+                
+                capModel.traverse(c => { 
+                    if (c.isBone) { 
+                        if (c.name.includes('CC_Base_Head')) capBones.head = c; 
+                        if (c.name.includes('CC_Base_JawRoot')) capBones.jaw = c; 
+                    }
+                });
+                
+                const shadowCanvas = document.createElement('canvas'); shadowCanvas.width = shadowCanvas.height = 512; 
+                const ctx = shadowCanvas.getContext('2d'); const grad = ctx.createRadialGradient(256, 256, 25, 256, 256, 256); 
+                grad.addColorStop(0, 'rgba(0,0,0,0.8)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = grad; ctx.fillRect(0,0,512,512); 
+                const shadowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shadowCanvas), transparent: true, opacity: 0.6, depthWrite: false })); 
+                shadowMesh.rotation.x = -Math.PI/2; shadowMesh.position.y = 0.001; capScene.add(shadowMesh); capScene.add(capModel);
+                
                 capMixer = new THREE.AnimationMixer(capModel); 
+                
                 gltfLoader.load('https://cherrydesign.shop/wp-content/uploads/models/a1.glb', (animGltf) => { 
-                    capMixer.clipAction(animGltf.animations[0]).play(); 
+                    actionIdle = capMixer.clipAction(animGltf.animations[0]);
+                    actionIdle.play(); 
+                    
+                    gltfLoader.load('https://cherrydesign.shop/wp-content/uploads/models/dance.glb', (danceGltf) => {
+                        actionDance = capMixer.clipAction(danceGltf.animations[0]);
+                    }, undefined, (error) => console.log("Dance anim load error"));
                 });
             });
         }
 
-        function updateCaptainBubble() { if (bubble.style.display === 'none') return; const target = capBones.head || capModel; const worldPos = new THREE.Vector3(); target.getWorldPosition(worldPos); worldPos.project(capCamera); const rect = capContainerView.getBoundingClientRect(); bubble.style.left = `${(worldPos.x * 0.5 + 0.5) * rect.width}px`; bubble.style.top = `${(worldPos.y * -0.5 + 0.5) * rect.height - 30}px`; }
+        function updateCaptainBubble() { 
+            if (bubble.style.display === 'none') return; 
+            const target = capBones.head || capModel; const worldPos = new THREE.Vector3(); 
+            target.getWorldPosition(worldPos); worldPos.project(capCamera); 
+            const rect = capContainerView.getBoundingClientRect(); 
+            bubble.style.left = `${(worldPos.x * 0.5 + 0.5) * rect.width}px`; 
+            bubble.style.top = `${(worldPos.y * -0.5 + 0.5) * rect.height - 30}px`; 
+        }
         
         function createMagicDust() { 
             const particleCount = window.innerWidth < 768 ? 400 : 1200; 
             const geo = new THREE.BufferGeometry(); 
             const pos = new Float32Array(particleCount * 3); 
-            for(let i = 0; i < particleCount * 3; i++) pos[i] = (Math.random() - 0.5) * 4; geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); 
-            const c = document.createElement('canvas'); c.width = 16; c.height = 16; const ctx = c.getContext('2d'); const g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 16, 16); particleSystem = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.02, map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); scene.add(particleSystem); }
+            for(let i = 0; i < particleCount * 3; i++) pos[i] = (Math.random() - 0.5) * 4; 
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); 
+            const c = document.createElement('canvas'); c.width = 16; c.height = 16; const ctx = c.getContext('2d'); 
+            const g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 16, 16); 
+            particleSystem = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.02, map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); 
+            scene.add(particleSystem); 
+        }
 
         async function captainSpeak(text, isThinking = false) {
+            if (currentCaptainAudio) {
+                currentCaptainAudio.pause();
+                currentCaptainAudio.currentTime = 0;
+                currentCaptainAudio = null;
+                isTalking = false;
+            }
+
             if (isThinking) {
                 bubbleText.textContent = '...'; bubbleDots.style.visibility = 'visible'; bubble.style.display = 'block'; isTalking = false; return;
             }
             bubbleText.textContent = text; bubbleDots.style.visibility = 'hidden'; bubble.style.display = 'block'; bubble.style.opacity = '1';
 
+            // ELEVEN LABS + ФОЛБЕК НА БРАУЗЕРНИЙ ГОЛОС
             try {
                 const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'xi-api-key': ELEVEN_LABS_API_KEY },
                     body: JSON.stringify({ text: text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } })
                 });
-                if (!response.ok) throw new Error('ElevenLabs API error');
+                
+                if (!response.ok) throw new Error('ElevenLabs Error');
+                
                 const audioBlob = await response.blob();
                 const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                audio.volume = 0.4; 
-                audio.onplay = () => { isTalking = true; };
-                audio.onended = () => { isTalking = false; setTimeout(() => bubble.style.display = 'none', 2000); };
-                audio.play();
+                currentCaptainAudio = new Audio(audioUrl);
+                currentCaptainAudio.volume = 0.4; 
+                
+                currentCaptainAudio.onplay = () => { isTalking = true; };
+                currentCaptainAudio.onended = () => { 
+                    isTalking = false; 
+                    currentCaptainAudio = null;
+                    setTimeout(() => bubble.style.display = 'none', 3000); 
+                };
+                currentCaptainAudio.play();
             } catch (err) {
-                console.warn("Audio Error:", err);
-                isTalking = false; setTimeout(() => bubble.style.display = 'none', 5000);
+                console.warn("API Голосу недоступне, вмикаємо резервний голос.");
+                const synth = window.speechSynthesis;
+                synth.cancel();
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'uk-UA';
+                utter.pitch = 0.9;
+                utter.rate = 1.0;
+                utter.onplay = () => { isTalking = true; };
+                utter.onend = () => { isTalking = false; setTimeout(() => bubble.style.display = 'none', 3000); };
+                synth.speak(utter);
             }
         }
 
-        function appendChat(text, type) { const div = document.createElement('div'); div.className = `chat-item ${type === 'user' ? 'chat-user' : 'chat-bot'}`; div.textContent = text; chatHistory.appendChild(div); chatHistory.scrollTop = chatHistory.scrollHeight; }
+        function appendChat(text, type) { 
+            const div = document.createElement('div'); 
+            div.className = `chat-item ${type === 'user' ? 'chat-user' : 'chat-bot'}`; 
+            div.textContent = text; 
+            chatHistory.appendChild(div); 
+            chatHistory.scrollTop = chatHistory.scrollHeight; 
+        }
 
         async function sendToVercel(msg, isUserMessage = false) {
             if (!msg.trim() || isAIProcessing) return; 
             isAIProcessing = true; 
             
             if (isUserMessage) appendChat(msg, 'user'); 
-            
             document.getElementById('ai-input').value = ''; captainSpeak('...', true);
             
             const payload = { message: msg };
-            if (currentImageBase64) { 
-                payload.imageBase64 = currentImageBase64; 
-                currentImageBase64 = null; 
-            } 
+            if (currentImageBase64) { payload.imageBase64 = currentImageBase64; currentImageBase64 = null; } 
 
             try { 
                 const res = await fetch(VERCEL_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); 
                 const data = await res.json(); 
-                const reply = data.speech || data.reply || data.text || "Це виглядає надзвичайно смачно, бос."; 
-                
-                if (isUserMessage || msg === "Опиши це фото як маркетолог") {
-                     appendChat(reply, 'bot'); 
-                }
+                const reply = data.speech || data.reply || data.text || "Це виглядає надзвичайно."; 
+                if (isUserMessage || msg.includes("реченням") || msg.includes("номер")) { appendChat(reply, 'bot'); }
                 captainSpeak(reply); 
             } catch (err) { 
-                appendChat("Втрачено зв'язок.", 'bot'); 
                 captainSpeak("Вибачте, втрачено зв'язок із сервером."); 
             } finally {
                 setTimeout(() => { isAIProcessing = false; }, 3000); 
             }
         }
 
-        function setupChatUI() { const panel = document.getElementById('captain-chat-panel'); const input = document.getElementById('ai-input'); const sendBtn = document.getElementById('ai-send-btn'); const micBtn = document.getElementById('ai-mic-btn'); document.getElementById('captain-toggle-btn').addEventListener('click', () => { panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex'; }); sendBtn.addEventListener('click', () => sendToVercel(input.value, true)); input.addEventListener('keydown', e => { if(e.key === 'Enter') sendToVercel(input.value, true); }); micBtn.addEventListener('click', () => { const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SpeechRec) return; const rec = new SpeechRec(); rec.lang = 'uk-UA'; micBtn.style.opacity = '0.5'; rec.onresult = (ev) => { input.value = ev.results[0][0].transcript; sendToVercel(input.value, true); }; rec.onend = () => { micBtn.style.opacity = '1'; }; rec.start(); }); }
+        function setupChatUI() { 
+            const panel = document.getElementById('captain-chat-panel'); const input = document.getElementById('ai-input'); 
+            const sendBtn = document.getElementById('ai-send-btn'); const micBtn = document.getElementById('ai-mic-btn'); 
+            document.getElementById('captain-toggle-btn').addEventListener('click', () => { panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex'; }); 
+            sendBtn.addEventListener('click', () => sendToVercel(input.value, true)); 
+            input.addEventListener('keydown', e => { if(e.key === 'Enter') sendToVercel(input.value, true); }); 
+            micBtn.addEventListener('click', () => { 
+                const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition; 
+                if (!SpeechRec) return; 
+                const rec = new SpeechRec(); rec.lang = 'uk-UA'; micBtn.style.opacity = '0.5'; 
+                rec.onresult = (ev) => { input.value = ev.results[0][0].transcript; sendToVercel(input.value, true); }; 
+                rec.onend = () => { micBtn.style.opacity = '1'; }; rec.start(); 
+            }); 
+        }
 
         async function handleImageUpload(e) {
             const file = e.target.files[0]; if (!file) return;
@@ -495,34 +910,40 @@
                 canvas.width = w; canvas.height = h; ctx.drawImage(img, 0, 0, w, h);
                 currentImageBase64 = canvas.toDataURL('image/jpeg', 0.6); 
                 
-                createConfettiExplosion();
+                createPremiumSparks(); 
                 
-                captainSpeak("Ух ти! Просто вибух смаку! Дайте но я погляну...", true);
-                setTimeout(() => { sendToVercel("Опиши це фото як маркетолог"); }, 1500);
+                // КОРОТКО
+                captainSpeak("Фото завантажено! Якість чудова.");
+                setTimeout(() => { sendToVercel("Опиши це фото 1 коротким реченням."); }, 4000);
             };
             img.src = await new Promise((res) => { const reader = new FileReader(); reader.onload = (ev) => res(ev.target.result); reader.readAsDataURL(file); });
         }
 
-        function createConfettiExplosion() {
-            if(confetti) scene.remove(confetti);
-            const particleCount = window.innerWidth < 768 ? 300 : 800;
+        function createPremiumSparks() {
+            if(premiumSparks) scene.remove(premiumSparks);
+            const particleCount = 200;
             const geo = new THREE.BufferGeometry();
             const posArray = new Float32Array(particleCount * 3);
             const colorArray = new Float32Array(particleCount * 3);
             
+            const wScale = currentWidthCm / 100;
+            const hScale = currentHeightCm / 100;
+
             for(let i=0; i < particleCount; i++) {
-                posArray[i*3] = (Math.random()-0.5) * 0.2; 
-                posArray[i*3+1] = (Math.random()-0.5) * 0.2;
-                posArray[i*3+2] = (Math.random()-0.5) * 0.2;
-                colorArray[i*3] = Math.random();
-                colorArray[i*3+1] = Math.random();
-                colorArray[i*3+2] = Math.random();
+                posArray[i*3] = (Math.random()-0.5) * wScale * 1.2; 
+                posArray[i*3+1] = (Math.random()-0.5) * hScale * 1.2;
+                posArray[i*3+2] = 0.02 + Math.random() * 0.1; 
+                
+                const mix = Math.random();
+                colorArray[i*3] = 1.0; 
+                colorArray[i*3+1] = 0.8 + (mix * 0.2); 
+                colorArray[i*3+2] = mix * 0.5; 
             }
             geo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
             geo.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
             
             const mat = new THREE.PointsMaterial({
-                size: window.innerWidth < 768 ? 0.03 : 0.05,
+                size: window.innerWidth < 768 ? 0.02 : 0.03,
                 map: particleSystem.material.map, 
                 vertexColors: true,
                 transparent: true,
@@ -530,36 +951,35 @@
                 depthWrite: false
             });
             
-            confetti = new THREE.Points(geo, mat);
-            scene.add(confetti);
-            confetti.visible = true;
-            confettiTime = 0;
+            premiumSparks = new THREE.Points(geo, mat);
+            scene.add(premiumSparks);
+            premiumSparks.visible = true;
+            sparksTime = 0;
         }
 
-        // ФІКС 1: Робоче красиве фото з Вікіпедії + надійний фоллбек (onerror)
         function loadDefaultTexture() { 
-            const img = new Image(); img.crossOrigin = "anonymous"; 
-            img.onload = () => { 
-                currentTexture = new THREE.Texture(img); currentTexture.needsUpdate = true; currentTexture.colorSpace = THREE.SRGBColorSpace; 
-                generateSmartSizes(img.width, img.height); 
-                
-                const cherryLoader = document.getElementById('cherry-loader');
-                cherryLoader.style.opacity = '0';
-                setTimeout(() => cherryLoader.style.display = 'none', 300);
-            }; 
-            img.onerror = () => {
-                // Якщо і це фото колись впаде, створиться базове сіре полотно з текстом (без помилки 404)
-                const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 512;
-                const ctx = canvas.getContext('2d'); ctx.fillStyle = '#f9fafb'; ctx.fillRect(0,0,512,512);
-                ctx.fillStyle = '#d90429'; ctx.font = 'bold 32px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Завантажте фото', 256, 256);
-                currentTexture = new THREE.CanvasTexture(canvas); currentTexture.colorSpace = THREE.SRGBColorSpace;
-                generateSmartSizes(512, 512);
-                const cherryLoader = document.getElementById('cherry-loader');
-                cherryLoader.style.opacity = '0';
-                setTimeout(() => cherryLoader.style.display = 'none', 300);
-            };
-            // Нове, надійне джерело (Вікіпедія): Ван Гог "Зоряна Ніч"
-            img.src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg/1024px-Van_Gogh_-_Starry_Night_-_Google_Art_Project.jpg'; 
+            const canvas = document.createElement('canvas'); 
+            canvas.width = 1024; canvas.height = 768;
+            const ctx = canvas.getContext('2d');
+            
+            const grad = ctx.createLinearGradient(0, 0, 1024, 768);
+            grad.addColorStop(0, '#fdfbfb'); 
+            grad.addColorStop(1, '#ebedee');
+            ctx.fillStyle = grad; 
+            ctx.fillRect(0, 0, 1024, 768);
+            
+            ctx.fillStyle = '#d90429'; 
+            ctx.font = 'bold 48px Inter, sans-serif'; 
+            ctx.textAlign = 'center'; 
+            ctx.fillText('Завантажте фото для шедевру', 512, 384);
+
+            currentTexture = new THREE.CanvasTexture(canvas); 
+            currentTexture.colorSpace = THREE.SRGBColorSpace; 
+            generateSmartSizes(1024, 768); 
+            
+            const cherryLoader = document.getElementById('cherry-loader');
+            cherryLoader.style.opacity = '0';
+            setTimeout(() => cherryLoader.style.display = 'none', 300);
         }
         
         function generateSmartSizes(w, h) { 
@@ -578,9 +998,7 @@
 
                     if (document.getElementById('imageInput').files.length > 0) {
                         if (currentWidthCm >= 60 || currentHeightCm >= 60) {
-                            sendToVercel(`Клієнт вибрав великий розмір ${currentWidthCm}x${currentHeightCm}. Скажи, що це буде виглядати дуже солідно і масштаб вражає.`);
-                        } else if (currentWidthCm <= 30 && currentHeightCm <= 30) {
-                            sendToVercel(`Клієнт вибрав розмір ${currentWidthCm}x${currentHeightCm}. Скажи, що це чудовий вибір для затишного подарунка або на робочий стіл.`);
+                            sendToVercel(`Клієнт вибрав великий розмір. Скажи 1 коротке речення про солідність.`);
                         }
                     }
                 }); 
@@ -591,7 +1009,21 @@
         }
 
         function autoFrameCamera(w, h) { if (!container || container.clientWidth === 0 || container.clientHeight === 0) return; const screenW = container.clientWidth; const screenH = container.clientHeight; const activeW = window.innerWidth > 768 ? screenW - 460 : screenW; const activeH = window.innerWidth > 768 ? screenH : screenH * 0.5; const offX = window.innerWidth > 768 ? -230 : 0, offY = window.innerWidth > 768 ? 0 : (screenH - activeH) / 2; const fovRad = camera.fov * (Math.PI / 180); let tz = Math.max((h * 1.2) / (2 * Math.tan(fovRad/2) * (activeH/screenH)), (w * 1.2) / (2 * Math.tan(fovRad/2) * (activeW/screenH))); if (tz > 8) tz = 8; if (tz < 0.3) tz = 0.3; const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize(); if (dir.lengthSq() < 0.1) dir.set(0.35, 0.15, 0.9).normalize(); camera.position.copy(controls.target).add(dir.multiplyScalar(tz)); camera.setViewOffset(screenW, screenH, offX, offY, screenW, screenH); camera.updateProjectionMatrix(); controls.update(); }
+        
         function resizeCanvas() { if (!container || container.clientWidth === 0 || container.clientHeight === 0) return; camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(container.clientWidth, container.clientHeight); autoFrameCamera(currentWidthCm / 100, currentHeightCm / 100); if(capContainerView && capContainerView.clientWidth > 0) { capCamera.aspect = capContainerView.clientWidth / capContainerView.clientHeight; capCamera.updateProjectionMatrix(); capRenderer.setSize(capContainerView.clientWidth, capContainerView.clientHeight); } }
+
+        // РОБОЧА ВІДПРАВКА НОМЕРА В VERCEL
+        function initiateCallback() {
+            const phone = prompt("Введіть ваш номер телефону:", "");
+            if (phone && phone.trim().length > 7) {
+                // Відправляємо на Vercel як повідомлення, ШІ побачить і відповість
+                sendToVercel(`Клієнт замовив дзвінок. Номер: ${phone.trim()}. Підтверди прийом 1 коротким реченням.`, false);
+                appendChat(`📞 Мій номер: ${phone.trim()}`, 'user');
+                showToast("Номер передано!", "success");
+            } else if (phone !== null) {
+                showToast("Будь ласка, введіть коректний номер.", "error");
+            }
+        }
 
         document.getElementById('orderButton').addEventListener('click', async () => {
             const btn = document.getElementById('orderButton');
@@ -613,7 +1045,7 @@
             }
 
             btn.disabled = true; 
-            btn.innerHTML = "⏳ Надсилаємо...";
+            btn.innerHTML = "⏳ Оформлюємо замовлення...";
 
             const formData = new FormData();
             formData.append('action', 'cherry_new_order');
@@ -629,8 +1061,25 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showToast("Замовлення надіслано!", "success");
-                    captainSpeak("Все прийняв, бос! Твоє замовлення вже у нас. Скоро наберемо, щоб уточнити деталі доставки.");
+                    showToast("Замовлення прийнято!", "success");
+                    
+                    // КОРОТКО ТА ПО СУТІ
+                    captainSpeak("Дякую! Геніальний вибір. Скоро зателефонуємо!");
+                    
+                    if (actionIdle && actionDance && actionDance.getClip && actionDance.getClip()) {
+                        actionDance.reset();
+                        actionDance.play();
+                        actionIdle.crossFadeTo(actionDance, 0.5, true); 
+                        
+                        setTimeout(() => {
+                            if (actionIdle && actionDance) {
+                                actionIdle.reset();
+                                actionIdle.play();
+                                actionDance.crossFadeTo(actionIdle, 0.8, true);
+                            }
+                        }, 5000); 
+                    }
+
                     document.getElementById('customerPhone').value = '';
                     document.getElementById('customerName').value = '';
                 } else {
